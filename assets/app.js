@@ -1,5 +1,5 @@
 'use strict';
-let content, current = 0, mode = 'read', notesOpen = false;
+let content, lessons, current = 0, mode = 'read', notesOpen = false;
 const $ = id => document.getElementById(id);
 const escapeHTML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tag = (label, tone = '') => `<span class="tag ${tone}">${label}</span>`;
@@ -23,7 +23,18 @@ function sourceLinks(ids) {
   return ids.map(id => {const s=content.sources[id]; return `<a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHTML(s.label)} ↗</a>`;}).join('');
 }
 function chapter(c, index) {
-  return `<article class="chapter ${index===0?'opening':''}" id="${c.id}" data-index="${index}"><div class="chapter-meta"><span class="eyebrow">${c.eyebrow}</span><span>${c.minutes} MIN</span></div>${index===0?'<p class="series-title">Code Agent 辅助池化开发 · GLM-5.3-Flash 适配复盘</p>':''}<h1>${escapeHTML(c.title).replace(/\n/g,'<br>')}</h1><p class="takeaway">${escapeHTML(c.takeaway)}</p><div class="chapter-main"><div class="figure">${figure(c.visual)}</div><ul class="points">${c.bullets.map(b=>`<li>${escapeHTML(b)}</li>`).join('')}</ul></div><div class="reading-detail"><h2>展开讲</h2>${c.reading.map(p=>`<p>${escapeHTML(p)}</p>`).join('')}<details><summary>讲者备注 · ${c.minutes} 分钟</summary><p>${escapeHTML(c.notes)}</p></details><div class="source-links">${sourceLinks(c.sources)}</div></div></article>`;
+  const related = {model:['model','shards'],checkpoint:['control','checkpoint'],review:['review','sdk'],acceptance:['acceptance']}[c.id] || [];
+  return `<article class="chapter ${index===0?'opening':''}" id="${c.id}" data-index="${index}"><div class="chapter-meta"><span class="eyebrow">第一章 · 模型适配 / STEP ${String(index+1).padStart(2,'0')}</span><span>${c.minutes} MIN</span></div><h1>${escapeHTML(c.title).replace(/\n/g,'<br>')}</h1><p class="takeaway">${escapeHTML(c.takeaway)}</p><div class="agent-layout"><div class="prompt-panel"><div class="panel-heading"><span>你这样交给 Agent</span><button type="button" data-lesson-copy="${index}">复制指令</button></div>${code(c.prompt)}<small>根据本次经历整理的指令模板，并非历史对话逐字摘录。</small></div><div class="human-panel"><div><span>你应该收到</span><p>${escapeHTML(c.deliverable)}</p></div><div><span>你来判断</span><p>${escapeHTML(c.check)}</p></div></div></div><div class="followup"><span>发现这个信号 →</span><p>${escapeHTML(c.redflag)}</p><b>继续这样追问</b><p>“${escapeHTML(c.followup)}”</p></div><div class="reading-detail"><h2>怎么使用</h2>${c.reading.map(p=>`<p>${escapeHTML(p)}</p>`).join('')}${related.length?`<div class="case-jumps"><span>需要技术细节时再展开：</span>${related.map(id=>`<a href="#read/case-${id}">${escapeHTML(content.caseStudies.find(x=>x.id===id).label)} ↗</a>`).join('')}</div>`:''}<details><summary>讲者备注 · ${c.minutes} 分钟</summary><p>${escapeHTML(c.notes)}</p></details><div class="source-links">${sourceLinks(c.sources)}</div></div></article>`;
+}
+function chapterIntro() {
+  return `<section class="chapter-cover" id="adaptation"><span class="eyebrow">CHAPTER 01 / 模型适配</span><h1>教会你使用 Agent，<br>完成一次新模型池化适配。</h1><p class="takeaway">GLM-5.3-Flash 是练习材料。你要带走的是怎么提要求、怎么检查、怎么追问。</p><div class="learning-outcome"><b>本章学会</b><span>交清任务</span><span>检查产物</span><span>证伪判断</span><span>审查修改</span><span>验收交接</span></div><p class="chapter-scope">第一章参考时长 20 分钟 · 6 个操作步骤 · 每步含指令、预期产物和人工检查点</p><a class="chapter-start" href="#present/opening">开始第一章演示 ↗</a></section>`;
+}
+function performanceChapter() {
+  const c=content.chapters[1];
+  return `<section class="chapter-cover planned-chapter" id="performance"><span class="eyebrow">CHAPTER 02 / 性能调优</span><h1>第二章 · 性能调优</h1><span class="tag">预留章节 · 待补充</span><p class="takeaway">${escapeHTML(c.description)}</p><p>本章暂不计入第一章的 20 分钟演示；具体案例、节奏与指令将在下一轮补充。</p><a href="#read/adaptation">回到第一章 ↗</a></section>`;
+}
+function caseMaterial() {
+  return `<section class="appendix" id="cases"><span class="eyebrow">CASE LIBRARY / 技术资料</span><h1>用案例解释方法，<br>需要时再展开源码细节。</h1><p class="takeaway">这些是第一章的辅助材料，不是新的一级章节。演示主线始终是“你如何使用 Agent”。</p>${content.caseStudies.map(c=>`<details class="case-detail" id="case-${c.id}"><summary>${escapeHTML(c.label)}</summary><p>${escapeHTML(c.takeaway)}</p><div class="figure">${figure(c.visual)}</div>${c.reading.map(p=>`<p>${escapeHTML(p)}</p>`).join('')}<div class="source-links">${sourceLinks(c.sources)}</div></details>`).join('')}</section>`;
 }
 function appendix() {
   return `<section class="appendix" id="toolkit"><span class="eyebrow">APPENDIX / TAKE THE WORKFLOW</span><h1>下一个模型，<br>从这里开始。</h1><p class="takeaway">根据本次经历重新整理的任务模板，并非历史对话逐字摘录。</p>${content.templates.map((t,i)=>`<div class="template"><div><h2>${t.title}</h2><button type="button" data-copy="${i}">复制模板</button></div>${code(t.text)}</div>`).join('')}</section><section class="appendix" id="evidence"><span class="eyebrow">APPENDIX / EVIDENCE & LIMITS</span><h1>每个结论，<br>保留适用范围。</h1><p class="takeaway">来源核对：${content.date} · 本页是历史案例复盘，不是当前主线的兼容性声明。</p><div class="evidence-table"><table><caption>8705 修复后的 A3 DRAM 回归 · 每种长度一冷一热</caption><thead><tr><th>输入 token</th><th>冷命中</th><th>热命中</th><th>32-token 输出</th></tr></thead><tbody>${[[4353,4352],[8704,4352],[8705,4352],[8706,4352],[13057,13056]].map(([n,h])=>`<tr><td>${n}</td><td>0</td><td>${h}</td><td>冷热一致</td></tr>`).join('')}</tbody></table></div><p>A3 / DP16 / TP1 / EP / V1 eager / 无 MTP / HBM 前缀缓存关闭 / 加载失败策略 fail。10 个请求完成；这些结果不是完整数据集准确率，也不是 SSD 验收。</p><h2>三段证据，不合并成一句“全部通过”</h2><div class="timeline"><div><b>09.19 · 历史 A5</b><p>TP4＋EP、PD；non-layerwise 与 layerwise 的 DRAM／SSD 验收，叠加当时的量化、MTP、算子与 PD 修复。当时的 1152 对齐粒度不等于后续 A3 的 4352。</p></div><div><b>10.06 · A3 修复</b><p>无池化异常对照、#17828 基础修复、8705 边界回归。#17698 当日合入；单测通过数量不表示所有硬件组合已覆盖。</p></div><div><b>10.21 · SDK 认识更新</b><p>后续记录确认安装 SDK 默认 flag1 包含原生预取，修正仅以 Get 调用观察 SSD 的不完整方法。对早期断言按 SDK 版本重新审视。</p></div></div><h2>性能附注：8.69× 的边界</h2><p>后续 C32R1T101 记录的输入 token 吞吐比为 8.6923×。负载为约 128K 输入、1 token 输出、重复率 0.9，并经历前缀准备和参数调优。它是取消 TTFT 上限后的单次配对达标结果，包含正式成功请求的 SSD 证据；没有重复稳定性结论，也没有建立收益来自 readability 谓词补丁的因果关系。不得作为任意场景的稳定收益或 AI 人效提升比例。</p><h2>来源与公开范围</h2><div class="source-catalog">${Object.values(content.sources).map(s=>`<div><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHTML(s.label)} ↗</a><p>${escapeHTML(s.detail)}</p></div>`).join('')}</div><p class="public-note">原始内部日志不公开。脱敏摘录提供来源文件名与 SHA-256，用于版本溯源；校验值本身不是外部可独立复现实验的证明。硬件资源、SDK 与权重环境不随本网站分发。</p><p class="closing">理解 → 假设 → 实验 → 最小修改 → 回归 → 人工审查 → 交付</p></section>`;
@@ -44,46 +55,51 @@ function updateShards(container, tp) {
 }
 function getRoute() {
   const [m,id]=location.hash.slice(1).split('/');
-  return {mode:m==='present'?'present':'read', id:content.chapters.some(c=>c.id===id)||['toolkit','evidence'].includes(id)?id:content.chapters[0].id};
+  const extra=['adaptation','performance','cases','toolkit','evidence',...content.caseStudies.map(c=>'case-'+c.id)];
+  return {mode:m==='present'?'present':'read', id:lessons.some(c=>c.id===id)||extra.includes(id)?id:'adaptation'};
 }
 function render() {
   const route=getRoute();mode=route.mode;
-  if(mode==='present'&&['toolkit','evidence'].includes(route.id)){location.hash=`read/${route.id}`;return;}
-  const index=content.chapters.findIndex(c=>c.id===route.id);current=Math.max(0,index);
+  if(mode==='present'&&!lessons.some(c=>c.id===route.id)){location.hash=`read/${route.id}`;return;}
+  const index=lessons.findIndex(c=>c.id===route.id);current=Math.max(0,index);
   document.body.classList.toggle('presenting',mode==='present');
-  $('content').innerHTML=mode==='present'?chapter(content.chapters[current],current):content.chapters.map(chapter).join('')+appendix();
-  $('mode').innerHTML=mode==='present'?'返回阅读 <span>↙</span>':'开始演示 <span>↗</span>';
+  $('content').innerHTML=mode==='present'?chapter(lessons[current],current):chapterIntro()+lessons.map(chapter).join('')+performanceChapter()+caseMaterial()+appendix();
+  $('mode').innerHTML=mode==='present'?'返回阅读 <span>↙</span>':'演示第一章 <span>↗</span>';
   $('deck-controls').hidden=mode!=='present';$('speaker').hidden=mode!=='present'||!notesOpen;
-  $('counter').textContent=`${String(current+1).padStart(2,'0')} / ${content.chapters.length} · ${content.chapters[current].minutes} MIN`;
-  $('prev').disabled=current===0;$('next').disabled=current===content.chapters.length-1;
-  $('progress').style.width=`${(current+1)/content.chapters.length*100}%`;
-  $('speaker').textContent=content.chapters[current].notes;
-  document.title=`${index>=0?content.chapters[current].label:route.id==='toolkit'?'任务模板':'证据与边界'} · 从补丁到证据`;
-  $('toc').querySelectorAll('a').forEach((a,i)=>{a.href=`#${mode}/${content.chapters[i].id}`;if(i===index)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+  $('counter').textContent=`1.${current+1} / 1.${lessons.length} · ${lessons[current].minutes} MIN`;
+  $('prev').disabled=current===0;$('next').disabled=current===lessons.length-1;
+  $('progress').style.width=`${(current+1)/lessons.length*100}%`;
+  $('speaker').textContent=lessons[current].notes;
+  document.title=`${index>=0?lessons[current].label:route.id==='performance'?'第二章 · 性能调优':route.id==='adaptation'?'第一章 · 模型适配':'附录与案例'} · Code Agent 辅助池化开发`;
+  $('toc').querySelectorAll('a').forEach(a=>{
+    const id=a.dataset.lesson;
+    if(id)a.href=`#${mode}/${id}`;
+    if((id&&id===route.id)||(!id&&a.hash===`#read/${route.id}`))a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+  });
   document.querySelectorAll('[data-demo="checkpoint"]').forEach(c=>updateCheckpoint(c,0));
   document.querySelectorAll('[data-demo="shards"]').forEach(c=>updateShards(c,4));
   document.body.classList.remove('menu-open');$('menu').setAttribute('aria-expanded','false');
-  requestAnimationFrame(()=>{if(mode==='read')document.getElementById(route.id)?.scrollIntoView({block:'start'});else window.scrollTo(0,0);});
+  requestAnimationFrame(()=>{if(mode==='read'){const target=document.getElementById(route.id);if(target?.tagName==='DETAILS')target.open=true;target?.scrollIntoView({block:'start'});}else window.scrollTo(0,0);});
 }
-function move(delta){const i=Math.max(0,Math.min(content.chapters.length-1,current+delta));location.hash=`present/${content.chapters[i].id}`;}
+function move(delta){const i=Math.max(0,Math.min(lessons.length-1,current+delta));location.hash=`present/${lessons[i].id}`;}
 async function fullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$('fullscreen').textContent='可使用浏览器全屏';}}
 async function start(){
   try {
-    const response=await fetch('assets/content.json');if(!response.ok)throw new Error('content');content=await response.json();
-    $('toc').innerHTML=content.chapters.map((c,i)=>`<a href="#read/${c.id}"><span>${String(i+1).padStart(2,'0')}</span>${c.label}<small>${c.minutes}′</small></a>`).join('');
+    const response=await fetch('assets/content.json');if(!response.ok)throw new Error('content');content=await response.json();lessons=content.chapters[0].lessons;
+    $('toc').innerHTML=`<a class="chapter-link" href="#read/adaptation"><strong>第一章 · 模型适配</strong></a><div class="lesson-toc">${lessons.map((c,i)=>`<a data-lesson="${c.id}" href="#read/${c.id}"><span>1.${i+1}</span>${escapeHTML(c.label.split('：')[0])}<small>${c.minutes}′</small></a>`).join('')}</div><a class="chapter-link planned-link" href="#read/performance"><strong>第二章 · 性能调优</strong><small>待补充</small></a>`;
     render();window.addEventListener('hashchange',render);
-    $('mode').addEventListener('click',()=>{const id=getRoute().id;location.hash=`${mode==='read'?'present':'read'}/${['toolkit','evidence'].includes(id)?content.chapters[0].id:id}`;});
+    $('mode').addEventListener('click',()=>{const id=getRoute().id;location.hash=`${mode==='read'?'present':'read'}/${lessons.some(c=>c.id===id)?id:lessons[0].id}`;});
     $('prev').addEventListener('click',()=>move(-1));$('next').addEventListener('click',()=>move(1));$('fullscreen').addEventListener('click',fullscreen);
     $('notes-toggle').addEventListener('click',()=>{notesOpen=!notesOpen;$('speaker').hidden=!notesOpen;$('notes-toggle').setAttribute('aria-expanded',String(notesOpen));});
     $('menu').addEventListener('click',()=>{const open=document.body.classList.toggle('menu-open');$('menu').setAttribute('aria-expanded',String(open));});
     document.addEventListener('click',async e=>{
       const checkpoint=e.target.closest('[data-checkpoint]');if(checkpoint)updateCheckpoint(checkpoint.closest('[data-demo]'),Number(checkpoint.dataset.checkpoint));
       const tp=e.target.closest('[data-tp]');if(tp)updateShards(tp.closest('[data-demo]'),Number(tp.dataset.tp));
-      const copy=e.target.closest('[data-copy]');if(copy){try{await navigator.clipboard.writeText(content.templates[Number(copy.dataset.copy)].text);copy.textContent='已复制';}catch{copy.textContent='请选中下方文本复制';}}
+      const copy=e.target.closest('[data-copy], [data-lesson-copy]');if(copy){const text=copy.dataset.lessonCopy!==undefined?lessons[Number(copy.dataset.lessonCopy)].prompt:content.templates[Number(copy.dataset.copy)].text;try{await navigator.clipboard.writeText(text);copy.textContent='已复制';}catch{copy.textContent='请选中下方文本复制';}}
     });
     document.addEventListener('keydown',e=>{
       if(mode!=='present'||e.altKey||e.ctrlKey||e.metaKey||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable)return;
-      if(e.key==='Escape'){if(!document.fullscreenElement)location.hash=`read/${content.chapters[current].id}`;return;}
+      if(e.key==='Escape'){if(!document.fullscreenElement)location.hash=`read/${lessons[current].id}`;return;}
       if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();move(1);}
       if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();move(-1);}
       if(e.key.toLowerCase()==='n'&&e.target.tagName!=='BUTTON')$('notes-toggle').click();

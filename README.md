@@ -1,6 +1,9 @@
-# 从补丁到证据
+# Code Agent 辅助池化开发
 
-Code Agent 辅助池化开发：以 GLM-5.3-Flash 新模型适配为例。面向推理开发者的 20 分钟中文分享，包含成功实践、错误假设与人工纠偏。
+教推理开发者怎样向 Agent 交任务、检查产物、追问、评审和验收。GLM-5.3-Flash 适配经历作为练习案例，技术复盘放在可展开的资料中。
+
+- **第一章：模型适配**，参考时长 20 分钟。六步为交任务、看产物、做反证、审修改、验结果、做交接。每步包含可复制指令、预期产物、人工检查点、警示信号和追问示例。
+- **第二章：性能调优**，预留章节，内容和时长后续补充。当前演示只覆盖第一章。
 
 - 网站：https://zouyida2052.github.io/code-agent-kv-pooling/
 - 演示：进入网站点击“开始演示”；左右方向键或 PageUp / PageDown 翻页，N 开关备注，F 全屏，Esc 在退出全屏后返回阅读。
@@ -20,7 +23,7 @@ python -m http.server 8765 --bind 127.0.0.1
 
 ## 修改内容
 
-`assets/content.json` 是章节、阅读正文、讲者备注与来源的单一数据源。`speaker-notes.md` 是其导出稿；修改内容后同步导出，校验会检查二者是否一致。`assets/app.js` 提供两种模式与两项交互，所有站内资源使用项目相对路径。
+`assets/content.json` 是章节、步骤、阅读正文、讲者备注与来源的单一数据源。`chapters` 定义两章，每章的 `lessons` 定义教学步骤；`caseStudies` 保存辅助技术资料。`speaker-notes.md` 是其导出稿，修改内容后运行导出。`assets/app.js` 提供双模式和案例交互，所有站内资源使用项目相对路径。
 
 ```bash
 python export_notes.py

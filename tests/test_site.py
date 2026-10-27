@@ -15,15 +15,22 @@ class SiteChecks(unittest.TestCase):
 
     def test_talk_duration_and_required_content(self):
         chapters = self.content["chapters"]
-        self.assertEqual(len(chapters), 10)
-        self.assertEqual(sum(c["minutes"] for c in chapters), 20)
-        self.assertEqual(len({c["id"] for c in chapters}), len(chapters))
+        self.assertEqual([c["title"] for c in chapters], ["模型适配", "性能调优"])
+        self.assertEqual(chapters[1]["status"], "planned")
+        self.assertEqual(chapters[1]["lessons"], [])
+        lessons = chapters[0]["lessons"]
+        self.assertEqual(len(lessons), 6)
+        self.assertEqual(sum(c["minutes"] for c in lessons), 20)
+        self.assertEqual(len({c["id"] for c in lessons}), len(lessons))
         notes = (ROOT / "speaker-notes.md").read_text(encoding="utf8")
-        for c in chapters:
+        for c in lessons:
             self.assertGreater(len(c["notes"]), 80)
             self.assertIn(c["notes"], notes)
             self.assertIn(c["takeaway"], notes)
             self.assertGreaterEqual(len(c["reading"]), 2)
+            for field in ["prompt", "deliverable", "check", "redflag", "followup"]:
+                self.assertGreater(len(c[field]), 10)
+                self.assertIn(c[field], notes)
             for source in c["sources"]:
                 self.assertIn(source, self.content["sources"])
 
