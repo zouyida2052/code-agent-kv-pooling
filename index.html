@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f3ed">
+  <meta name="description" content="一场面向推理开发者的 20 分钟分享：以 GLM-5.3-Flash 为例，用任务契约、对照实验、源码审查与证据链辅助新模型 KV 池化开发。">
+  <title>从补丁到证据 · Code Agent 辅助池化开发</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#content">跳到正文</a>
+  <header class="topbar">
+    <a class="brand" href="#read/opening" aria-label="讲座首页"><span class="brand-mark">K<span>↗</span></span><span>INFERENCE FIELD NOTES<small>模型 · 缓存 · 人与 Agent</small></span></a>
+    <div class="header-actions"><span class="duration">20 MIN / 中文</span><button id="mode" class="primary" type="button">开始演示 <span>↗</span></button></div>
+  </header>
+  <div class="page-progress" aria-hidden="true"><span id="progress"></span></div>
+  <div class="layout">
+    <aside class="sidebar"><button id="menu" class="menu-button" aria-expanded="false" type="button">章节目录 <span>＋</span></button><div id="toc-wrap"><p class="eyebrow">THE PLAYBOOK</p><nav id="toc" aria-label="章节目录"></nav><div class="sidebar-bottom"><a href="#read/toolkit">任务模板与验收清单 ↗</a><a href="#read/evidence">证据与边界 ↗</a><a href="speaker-notes.md">讲者备注 ↓</a><a href="https://github.com/zouyida2052/code-agent-kv-pooling" target="_blank" rel="noopener noreferrer">GitHub 源码 ↗</a><span>CASE STUDY · 2026.10</span></div></div></aside>
+    <main id="content" tabindex="-1"><p class="loading">正在载入案例与讲解内容…</p></main>
+  </div>
+  <footer id="deck-controls" class="deck-controls" hidden><button id="prev" type="button" aria-label="上一页">← 上一页</button><span id="counter" aria-live="polite"></span><div><button id="notes-toggle" type="button" aria-expanded="false">讲者备注 N</button><button id="fullscreen" type="button">全屏 F</button><button id="next" type="button" aria-label="下一页">下一页 →</button></div></footer>
+  <aside id="speaker" class="speaker-panel" aria-label="讲者备注" hidden></aside>
+  <noscript><p>此页面需要 JavaScript。可直接阅读 <a href="speaker-notes.md">完整讲者备注</a> 与 <a href="evidence/validated-results.json">脱敏实验结果</a>。</p></noscript>
+</body>
+</html>

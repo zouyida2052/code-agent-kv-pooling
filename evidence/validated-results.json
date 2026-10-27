@@ -1,0 +1,124 @@
+{
+  "as_of": "2026-10-27",
+  "purpose": "Historical development retrospective; sanitized extracts, not a new acceptance run.",
+  "public_pr": {
+    "number": 17698,
+    "merged_at": "2026-10-06T09:52:42Z",
+    "merge_commit": "56df3aa38deabbf802f2a018914706e6dd64a8f1"
+  },
+  "historical_a5": {
+    "date": "2026-09-19",
+    "hardware": "A5",
+    "topology": "PD; DP1/TP4/PP1 + EP per endpoint",
+    "weight_type": "W8A8",
+    "scenarios": [
+      "non-layerwise",
+      "layerwise"
+    ],
+    "reported_coverage": [
+      "cold save",
+      "DRAM load",
+      "boundary and partial-prefix output comparison",
+      "same-key SSD eviction/read evidence"
+    ],
+    "alignment_tokens": 1152,
+    "scope": "Historical source tree with additional model, quantization, MTP, operator and PD repairs. Not PR-alone or current-head acceptance.",
+    "source": {
+      "file": "report.md",
+      "sha256": "c4ad688bcee06cf0a3986444c79591dcba565c589b0881bda3d898e737fa3bb3"
+    }
+  },
+  "checkpoint_regression": {
+    "date": "2026-10-06",
+    "hardware": "A3",
+    "topology": "DP16/TP1/EP",
+    "mode": "V1 eager; no MTP; DRAM; local HBM prefix caching disabled; kv_load_failure_policy=fail",
+    "base_pr_head": "61b90caf89bffca6658e885f7e039f0be8d2962d",
+    "overlay": "PR #17828 plus coordinator and KDA callback fixes; intermediate-checkpoint fix",
+    "alignment_tokens": 4352,
+    "actual_chunks_8705": [
+      4352,
+      4353
+    ],
+    "rows": [
+      {
+        "tokens": 4353,
+        "cold_hit": 0.0,
+        "hot_hit": 4352.0,
+        "equal_output": true
+      },
+      {
+        "tokens": 8704,
+        "cold_hit": 0.0,
+        "hot_hit": 4352.0,
+        "equal_output": true
+      },
+      {
+        "tokens": 8705,
+        "cold_hit": 0.0,
+        "hot_hit": 4352.0,
+        "equal_output": true
+      },
+      {
+        "tokens": 8706,
+        "cold_hit": 0.0,
+        "hot_hit": 4352.0,
+        "equal_output": true
+      },
+      {
+        "tokens": 13057,
+        "cold_hit": 0.0,
+        "hot_hit": 13056.0,
+        "equal_output": true
+      }
+    ],
+    "request_count": 10,
+    "output_comparison_tokens": 32,
+    "source": {
+      "file": "summary.json",
+      "sha256": "d30925dea48e41f705ceb50c12376dcce28257dc1dea33eb10ca799a1c08a318"
+    },
+    "diagnosis_source": {
+      "file": "report.md",
+      "sha256": "c6a2d6d535e3bd9ba7865e0d0bfe9043d62db644070187f6442f2ee47a2a961d"
+    }
+  },
+  "no_pool_control": {
+    "date": "2026-10-05",
+    "hardware": "A3",
+    "topology": "DP16/TP1/EP; V1 eager",
+    "changed_variable": "KV connector startup argument removed; candidate code retained",
+    "requests": 4,
+    "prompt_tokens": [
+      22,
+      7171
+    ],
+    "observation": "Generation anomaly persisted with no pooling connector; HTTP requests succeeded.",
+    "limit": "Does not identify the cause by itself and does not prove pooling correctness.",
+    "source": {
+      "file": "report.md",
+      "sha256": "6ab2111c5cda89f671f1eea59bf4cc04544f70aa4b168dd28e071df4c15c9baf"
+    }
+  },
+  "sdk_revision": {
+    "date": "2026-10-21",
+    "observation": "Installed SDK default query flag1 includes native prefetch; Get=0 does not exclude SSD reads.",
+    "native_evidence": "same key/GVA: SSD read start, DRAM WRITE_OK, SSD read finish, inside successful model request",
+    "predicate_patch_benefit": "not established; installed SDK default flag1 includes native prefetch; do not attribute performance changes to the predicate patch",
+    "source": {
+      "file": "results.json",
+      "sha256": "a4ef229cde316fe92ddd24949409e47e01766e71519d066c814201d952ac8030"
+    }
+  },
+  "performance_appendix": {
+    "date": "2026-10-21",
+    "case": "C32R1T101",
+    "input_token_throughput_ratio": 8.692263641206026,
+    "nominal_input_tokens": 131072,
+    "output_tokens": 1,
+    "repeat_rate": 0.9,
+    "qualification_scope": "One paired measurement with TTFT limit removed; no repeat-stability claim",
+    "limit": "Selected single tuned paired result, TTFT limit removed; no repeated stability or single-patch causal attribution."
+  },
+  "disclosure": "No raw internal logs, endpoints, hostnames, account names, device serials, credentials or absolute internal paths are included. Checksums identify original retained artifacts but do not make them public or independently reproducible."
+}
