@@ -10,6 +10,37 @@
 /* Case pages: short labels, a reading order, and an explicit takeaway. */
 .slide-body.experiment-body,.slide-body.checkpoint-body,.slide-body.review-body{gap:2.3vh}
 .slide-body.brief-body{gap:2.3vh}
+.slide-body.matrix-body{gap:2.3vh}
+.matrix-wrap{flex:1;min-height:0}
+.matrix-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.matrix-table thead th{padding:1.3vh 1.1vw;background:var(--brand-grey);color:var(--brand-red);font-size:min(1.35vw,2.4vh);font-weight:600;text-align:left}
+.matrix-table th:first-child{width:22%}
+.matrix-table tbody th,.matrix-table td{padding:1.4vh 1.1vw;border-bottom:1px solid var(--line);vertical-align:top;text-align:left;font-size:min(1.35vw,2.4vh);line-height:1.65;overflow-wrap:anywhere}
+.matrix-table tbody th{font-weight:600;font-size:min(1.45vw,2.55vh)}
+.matrix-bottom{display:grid;gap:1vh;border-top:1px solid var(--line);padding-top:1.5vh}
+.matrix-bottom p{font-size:min(1.3vw,2.3vh);line-height:1.65;color:var(--brand-red)}
+.dark .matrix-table thead th{background:#ffffff14;color:#fff}
+.dark .matrix-table td{color:#d7dade}
+.dark .matrix-table tbody th,.dark .matrix-table td,.dark .matrix-bottom{border-color:#ffffff40}
+.dark .matrix-bottom p{color:#fff}
+.dark .review-questions p,.dark .brief-receipt .brief-hint{color:#d7dade}
+.dark .review-questions li,.dark .brief-receipt .brief-hint{border-color:#ffffff40}
+.dark .review-questions li::before{color:#fff}
+.dark .brief-receipt{background:#ffffff0d}
+.dark .brief-receipt li p{color:#fff}
+.closing-layout.workflow-closing{justify-content:flex-start;padding-top:8vh;gap:2.6vh}
+.workflow-grid{list-style:none;margin:0;padding:0;gap:3vh 3vw}
+.workflow-step{padding:1.6vh 0;border-top:1px solid #ffffff70}
+.workflow-step h3{display:flex;gap:1vw;font-size:min(1.8vw,3.2vh);line-height:1.5;margin-bottom:1vh}
+.workflow-step h3 span{font-family:var(--mono);font-weight:400;opacity:.7}
+.workflow-step p{font-size:min(1.35vw,2.4vh);line-height:1.6;color:#ffffffd9}
+@media(orientation:portrait){
+ .matrix-table{table-layout:auto}.matrix-table th:first-child{width:23%}
+ .matrix-table thead th,.matrix-table tbody th,.matrix-table td{font-size:3.3vw;padding:1.5vh 1.5vw}
+ .matrix-bottom p{font-size:3.5vw}
+ .closing-layout.workflow-closing{height:auto;gap:3vh}
+ .workflow-step h3{font-size:5vw}.workflow-step p{font-size:3.7vw}
+}
 .brief-receipt ul{gap:2.5vh}
 .brief-receipt li p{font-size:min(1.45vw,2.55vh);color:var(--ink)}
 .brief-receipt .brief-hint{margin-top:3vh;padding-top:1.5vh;border-top:1px solid var(--line);font-size:min(1.25vw,2.2vh)}

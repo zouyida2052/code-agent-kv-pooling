@@ -43,7 +43,8 @@ def body(s):
     if kind == "divider":
         return f'<div class="section-layout"><div data-anim><div class="section-no">{esc(s["number"])}</div><h2 class="h-xl" style="margin-top:3vh">{title(s["title"])}</h2><p class="lead">{esc(s["lead"])}</p></div><div class="red-panel" data-anim><h3 class="h-md">{esc(s["statement"])}</h3></div></div>'
     if kind == "closing":
-        return f'<div class="closing-layout"><h2 class="h-hero" data-anim>{title(s["title"])}</h2><p class="lead" data-anim>{esc(s["lead"])}</p><p class="bottom-note">{esc(s["detail"])}</p><a class="website-link" href="{SITE}" target="_blank" rel="noopener noreferrer">{SITE}</a></div>'
+        steps = ''.join(f'<li class="workflow-step" data-anim><h3><span>{i:02d}</span>{esc(step["title"])}</h3><p>{esc(step["detail"])}</p></li>' for i, step in enumerate(s['workflow'],1))
+        return f'<div class="closing-layout workflow-closing"><h2 class="h-xl" data-anim>{title(s["title"])}</h2><p class="lead" data-anim>{esc(s["lead"])}</p><ol class="grid-3 workflow-grid">{steps}</ol><p class="bottom-note">{esc(s["detail"])}</p><a class="website-link" href="{SITE}" target="_blank" rel="noopener noreferrer">{SITE}</a></div>'
     if kind == "quote":
         return f'<div class="quote-layout"><p class="kicker">{esc(s["title"])}</p><h2 class="lecture-quote" data-anim>{title(s["quote"])}</h2><p class="lead" data-anim>{esc(s["lead"])}</p></div>'
     if kind == "prompt":
@@ -52,6 +53,11 @@ def body(s):
         terms = ''.join(f'<li data-anim><h3>{esc(t["title"])}</h3><p>{esc(t["detail"])}</p></li>' for t in s['terms'])
         receipt = ''.join(f'<li><p>{esc(item)}</p></li>' for item in s['receipt'])
         inner = f'<div class="grid-2 review-columns"><ol class="review-questions">{terms}</ol><aside class="review-examples brief-receipt" data-anim><h3>{esc(s["receipt_title"])}</h3><ul>{receipt}</ul><p class="brief-hint">{esc(s["receipt_hint"])}</p></aside></div>'
+    elif kind == "matrix":
+        columns = ''.join(f'<th scope="col">{esc(c)}</th>' for c in s['columns'])
+        rows = ''.join('<tr>' + ''.join(f'<th scope="row">{esc(cell)}</th>' if i == 0 else f'<td>{esc(cell)}</td>' for i,cell in enumerate(row)) + '</tr>' for row in s['rows'])
+        bottom = ''.join(f'<p>{esc(line)}</p>' for line in s['bottom_lines'])
+        inner = f'<div class="matrix-wrap" data-anim><table class="matrix-table" aria-label="{esc(s["title"])}"><thead><tr>{columns}</tr></thead><tbody>{rows}</tbody></table></div><div class="matrix-bottom">{bottom}</div>'
     elif kind == "three":
         inner = '<div class="grid-3 same-size">' + ''.join(card(b) for b in s["blocks"]) + '</div>'
     elif kind == "experiment":
@@ -103,6 +109,7 @@ def build():
     lines = ['# ' + data['title'] + '：30 分钟完整讲稿', '', data['subtitle'], '',
              '本次只讲模型适配，共 14 页，计划用时 30 分钟，不含会后问答。',
              '每页正文可直接朗读。用时包含指向页面、停顿和翻页，实际语速请以彩排为准。',
+             '带【】的小标题用于定位页面对应内容，无需朗读。',
              '指令模板为复盘整理，并非历史对话逐字记录。各页的备查模板和来源无需逐字朗读。', '',
              '## 时间安排', '', '| 页码 | 页面 | 本页用时 | 累计时间段 |', '| --- | --- | --- | --- |']
     for i, s in enumerate(data['slides'], 1):
