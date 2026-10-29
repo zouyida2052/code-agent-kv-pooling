@@ -1,5 +1,12 @@
 /* Template-derived presentation, AGPL-3.0. See THIRD_PARTY_NOTICES.md. */
 #note-body{white-space:pre-line}
+#controls{flex-wrap:wrap;max-width:86vw}
+#note-template{margin:24px 0;padding-top:20px;border-top:1px solid var(--line)}
+#note-template h3{font-size:20px;line-height:1.5;margin-bottom:10px}
+#note-template .template-provenance{font-size:14px;color:var(--muted)}
+#template-text{font:15px/1.8 var(--sans);white-space:pre-wrap;overflow-wrap:anywhere;background:var(--brand-grey);border-left:3px solid var(--brand-red);padding:16px;margin:12px 0;user-select:text}
+#copy-template{font:15px var(--sans);padding:7px 14px;border:1px solid var(--brand-red);background:#fff;color:var(--brand-red);cursor:pointer}
+#template-copy-status{margin-left:12px;font-size:14px}
 /* Case pages: short labels, a reading order, and an explicit takeaway. */
 .slide-body.experiment-body,.slide-body.checkpoint-body,.slide-body.review-body{gap:2.3vh}
 .slide-body.brief-body{gap:2.3vh}

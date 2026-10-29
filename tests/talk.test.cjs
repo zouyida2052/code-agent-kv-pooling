@@ -10,8 +10,12 @@ test('standalone lecture works on file URL without external resources', async ()
   const errors = [];
   const vc = new VirtualConsole(); vc.on('jsdomError', e => errors.push(e.message));
   const html = fs.readFileSync(path.join(root, 'talk/index.html'), 'utf8');
+  let copied = '';
   const dom = new JSDOM(html, {url:'file:///lecture/index.html', runScripts:'dangerously', virtualConsole:vc,
-    beforeParse(w) {w.matchMedia = () => ({matches:false});}
+    beforeParse(w) {
+      w.matchMedia = () => ({matches:false});
+      Object.defineProperty(w.navigator, 'clipboard', {configurable:true, value:{writeText:async value => {copied=value;}}});
+    }
   });
   const w=dom.window, d=w.document;
   await tick();
@@ -21,6 +25,7 @@ test('standalone lecture works on file URL without external resources', async ()
   assert.equal(d.querySelectorAll('#nav button').length, 14);
   assert.equal(d.querySelectorAll('.page-no').length, 14);
   assert.equal(slides[0].classList.contains('active'), true);
+  assert.equal(d.getElementById('template-toggle').hidden, true);
   d.getElementById('next').click();
   assert.equal(slides[1].classList.contains('active'), true);
   assert.equal(slides[0].getAttribute('aria-hidden'), 'true');
@@ -54,6 +59,23 @@ test('standalone lecture works on file URL without external resources', async ()
   w.location.hash='task-brief';await tick();
   assert.equal(slides[4].classList.contains('active'), true);
   assert.match(slides[4].textContent, /一份可执行的适配任务/);
+  const data = JSON.parse(d.getElementById('speaker-data').textContent);
+  assert.equal(d.getElementById('template-toggle').hidden, false);
+  d.getElementById('template-toggle').click();
+  assert.equal(d.getElementById('speaker-panel').hidden, false);
+  assert.equal(d.getElementById('note-template').hidden, false);
+  assert.match(d.getElementById('template-title').textContent, /备查指令模板（无需逐字朗读）/);
+  assert.equal(d.getElementById('template-text').textContent, data.slides[4].prompt);
+  d.getElementById('copy-template').click(); await tick();
+  assert.equal(copied, data.slides[4].prompt);
+  Object.defineProperty(w.navigator, 'clipboard', {value:undefined});
+  d.getElementById('copy-template').click(); await tick();
+  assert.equal(w.getSelection().toString(), data.slides[4].prompt);
+  w.location.hash='understanding'; await tick();
+  assert.equal(d.getElementById('template-text').textContent, data.slides[6].prompt);
+  w.location.hash='agenda'; await tick();
+  assert.equal(d.getElementById('note-template').hidden, true);
+  assert.equal(d.getElementById('template-toggle').hidden, true);
   assert.deepEqual(errors, []);
   w.close();
 });

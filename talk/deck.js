@@ -22,6 +22,10 @@
     const s = data.slides[current];
     document.getElementById('note-title').textContent = `${current + 1}. ${s.title.replaceAll('\n', ' ')} · ${s.duration} · ${s.time_range}`;
     document.getElementById('note-body').textContent = s.notes;
+    document.getElementById('note-template').hidden = !s.prompt;
+    document.getElementById('template-toggle').hidden = !s.prompt;
+    document.getElementById('template-text').textContent = s.prompt || '';
+    document.getElementById('template-copy-status').textContent = '';
     const links = document.getElementById('note-sources');
     links.replaceChildren();
     s.sources.forEach(id => {
@@ -58,6 +62,25 @@
     else document.getElementById('index-toggle').focus();
   }
   function toggleNotes() { panel.hidden = !panel.hidden; document.getElementById('notes-toggle').setAttribute('aria-expanded', String(!panel.hidden)); }
+  function openTemplate() {
+    panel.hidden = false;
+    document.getElementById('notes-toggle').setAttribute('aria-expanded', 'true');
+    document.getElementById('note-template').scrollIntoView?.({block:'start'});
+    document.getElementById('template-text').focus({preventScroll:true});
+  }
+  async function copyTemplate() {
+    const status = document.getElementById('template-copy-status');
+    try {
+      await navigator.clipboard.writeText(data.slides[current].prompt);
+      status.textContent = '已复制';
+    } catch {
+      const code = document.getElementById('template-text'), range = document.createRange();
+      range.selectNodeContents(code);
+      const selection = window.getSelection();
+      selection.removeAllRanges(); selection.addRange(range);
+      status.textContent = '已选中，请手动复制';
+    }
+  }
   function toggleStatic() {
     const on = document.body.classList.toggle('low-power');
     try { localStorage.setItem('agent-talk-static', on ? '1' : '0'); } catch {}
@@ -85,6 +108,8 @@
   prev.addEventListener('click', () => go(current - 1)); next.addEventListener('click', () => go(current + 1));
   document.getElementById('index-toggle').addEventListener('click', toggleOverview);
   document.getElementById('notes-toggle').addEventListener('click', toggleNotes);
+  document.getElementById('template-toggle').addEventListener('click', openTemplate);
+  document.getElementById('copy-template').addEventListener('click', copyTemplate);
   document.getElementById('speaker-close').addEventListener('click', toggleNotes);
   document.getElementById('static-toggle').addEventListener('click', toggleStatic);
   document.getElementById('screen-toggle').addEventListener('click', fullscreen);
