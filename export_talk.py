@@ -1,0 +1,99 @@
+"""Build the self-contained, template-derived HTML lecture (AGPL-3.0)."""
+import argparse
+import html
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+TALK = ROOT / "talk"
+SITE = "https://zouyida2052.github.io/code-agent-kv-pooling/"
+BRAND = '<div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div>'
+
+
+def esc(text):
+    return html.escape(str(text), quote=True)
+
+
+def title(text):
+    return esc(text).replace("\n", "<br>")
+
+
+def card(block):
+    return f'<div class="card flat" data-anim><h3 class="card-title">{esc(block["title"])}</h3><p class="card-body">{esc(block["text"])}</p><p class="card-detail">{esc(block["detail"])}</p></div>'
+
+
+def body(s):
+    kind = s["type"]
+    heading = f'<div class="content-stack" data-anim><h2 class="h-xl">{title(s["title"])}</h2><p class="lead">{esc(s.get("lead", ""))}</p></div>'
+    if kind == "cover":
+        return f'<div class="cover-shell"><div class="cover-title-wrap"><div class="cover-badge"><span class="brand-mark" aria-hidden="true"></span></div><h1 class="h-hero" data-anim>{title(s["title"])}</h1><p class="lead cover-subtitle" data-anim>{esc(s["lead"])}</p><p class="cover-line">{esc(s["detail"])}</p></div><div class="cover-visual" aria-hidden="true"><span class="cover-code">AI</span></div></div><div class="cover-wave" aria-hidden="true"></div><div class="cover-meta"><span>技术交流</span><span>第一章参考时长 20 分钟</span></div>'
+    if kind == "agenda":
+        items = ''.join(f'<div class="agenda-item" data-anim><div class="idx">{esc(i["number"])}</div><div class="txt">{esc(i["title"])}<small>{esc(i["text"])}</small><span class="agenda-status">{esc(i["status"])}</span></div></div>' for i in s["items"])
+        return f'<div class="agenda-layout"><div class="red-panel" data-anim><h2 class="h-xl">专题安排</h2><div class="en">CONTENTS</div></div><div class="agenda-list">{items}<p class="small-note">{esc(s["lead"])}</p></div></div>'
+    if kind == "divider":
+        return f'<div class="section-layout"><div data-anim><div class="section-no">{esc(s["number"])}</div><h2 class="h-xl" style="margin-top:3vh">{title(s["title"])}</h2><p class="lead">{esc(s["lead"])}</p></div><div class="red-panel" data-anim><h3 class="h-md">{esc(s["statement"])}</h3></div></div>'
+    if kind == "closing":
+        return f'<div class="closing-layout"><h2 class="h-hero" data-anim>{title(s["title"])}</h2><p class="lead" data-anim>{esc(s["lead"])}</p><p class="bottom-note">{esc(s["detail"])}</p><a class="website-link" href="{SITE}" target="_blank" rel="noopener noreferrer">{SITE}</a></div>'
+    if kind == "quote":
+        return f'<div class="quote-layout"><p class="kicker">{esc(s["title"])}</p><h2 class="lecture-quote" data-anim>{title(s["quote"])}</h2><p class="lead" data-anim>{esc(s["lead"])}</p></div>'
+    if kind == "prompt":
+        inner = f'<div class="grid-2" style="grid-template-columns:1.15fr 1fr"><div data-anim><pre class="prompt-block">{esc(s["prompt"])}</pre><p class="small-note" style="margin-top:1.5vh">复盘整理的指令模板</p></div><div class="prompt-side" data-anim><div><h3>Agent 应交付</h3><p>{esc(s["expect"])}</p></div><div><h3>人工检查</h3><p>{esc(s["check"])}</p></div></div></div><p class="followup-line" data-anim>{esc(s["followup"])}</p>'
+    elif kind == "three":
+        inner = '<div class="grid-3 same-size">' + ''.join(card(b) for b in s["blocks"]) + '</div>'
+    elif kind == "compare":
+        inner = f'<div class="grid-2 same-size compare-layout"><div class="card compare-left" data-anim><h3 class="card-title">{esc(s["left"]["title"])}</h3><p class="body-copy">{esc(s["left"]["text"])}</p><p class="card-detail">{esc(s["left"]["detail"])}</p></div><div class="card compare-right" data-anim><h3 class="card-title">{esc(s["right"]["title"])}</h3><p class="body-copy">{esc(s["right"]["text"])}</p><p class="card-detail">{esc(s["right"]["detail"])}</p></div></div><p class="followup-line">{esc(s["conclusion"])}</p>'
+    elif kind == "checkpoint":
+        stats = ''.join(f'<div class="stat-card" data-anim><div class="stat-big">{esc(b["value"])}</div><h3 class="card-title">{esc(b["label"])}</h3><p class="card-detail">{esc(b["detail"])}</p></div>' for b in s["stats"])
+        inner = f'<div class="grid-3 same-size">{stats}</div><p class="followup-line">{esc(s["conclusion"])}</p><p class="small-note">A3 · DP16/TP1 · V1 eager · 无 MTP · DRAM · 对齐粒度仅针对该配置</p>'
+    elif kind == "handoff":
+        inner = '<ul class="handoff-list">' + ''.join(f'<li data-anim>{esc(t)}</li>' for t in s["items"]) + f'</ul><p class="followup-line">{esc(s["statement"])}</p>'
+    elif kind == "loop":
+        left = ''.join(f'<div>{esc(x)}</div>' for x in s["agent"])
+        right = ''.join(f'<div>{esc(x)}</div>' for x in s["review"])
+        inner = f'<div class="grid-2 same-size" style="grid-template-columns:.8fr 1.2fr"><div class="content-stack" data-anim><p class="body-copy">人的任务是给出范围和判断依据。</p><p class="body-copy">Agent 负责连续探索、验证和整理。</p></div><div class="loop-board" data-anim><div class="loop-boundary">{esc(s["human"])}</div><div class="loop-center"><div class="loop-list">{left}</div><div class="loop-agent">Agent</div><div class="loop-list">{right}</div></div><div class="loop-boundary">{esc(s["gate"])}</div></div></div>'
+    else:
+        raise ValueError(kind)
+    return f'<div class="slide-body">{heading}{inner}</div>'
+
+
+def build():
+    data = json.loads((TALK / "slides.json").read_text(encoding="utf8"))
+    sources = json.loads((ROOT / "assets/content.json").read_text(encoding="utf8"))["sources"]
+    sources = {key: dict(value, url=value["url"] if value["url"].startswith("https://") else SITE + value["url"]) for key, value in sources.items()}
+    data["sources"] = sources
+    sections = []
+    for s in data["slides"]:
+        chrome = '' if s["layout"] in {"H01", "H02", "H03", "H10"} else f'<div class="chrome"><div class="l"><span class="square"></span><span>{esc(s.get("step", "第一章 模型适配"))}</span></div><div></div></div>'
+        classes = 'slide ' + ('hw-cover ' if s["type"] == "cover" else '') + s["theme"]
+        sections.append(f'<section class="{classes}" data-layout="{s["layout"]}" data-animate="{s["type"]}" id="slide-{s["id"]}" aria-label="{esc(s["title"].replace(chr(10), " "))}">{chrome}{BRAND}{body(s)}</section>')
+    css = (TALK / "base.css").read_text(encoding="utf8") + '\n' + (TALK / "deck.css").read_text(encoding="utf8")
+    js = (TALK / "deck.js").read_text(encoding="utf8")
+    payload = json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
+    license_text = (TALK / "LICENSE").read_text(encoding="utf8")
+    document = f'''<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Code Agent 辅助池化开发，华为企业汇报风讲解文件。第一章模型适配，第二章性能调优预留。"><title>{esc(data['title'])}</title><style>{css}</style></head>
+<body><a class="skip-link" href="#deck">跳到讲解内容</a><div id="hint">← → 翻页 · ESC 索引 · N 备注 · B 静态</div><main id="deck" tabindex="-1">{''.join(sections)}</main><nav id="nav" aria-label="逐页跳转"></nav><div id="controls"><button id="previous" type="button" aria-label="上一页">‹</button><button id="next" type="button" aria-label="下一页">›</button><button id="index-toggle" type="button">索引</button><button id="notes-toggle" type="button" aria-expanded="false">备注</button><button id="static-toggle" type="button" aria-pressed="false">静态</button><button id="screen-toggle" type="button">全屏</button></div><div id="overview" role="dialog" aria-label="幻灯片索引" aria-modal="true" aria-hidden="true" inert></div><aside id="speaker-panel" aria-label="讲者备注" hidden><button id="speaker-close" type="button">关闭</button><h2 id="note-title"></h2><p id="note-body"></p><div id="note-sources"></div></aside><noscript><div class="fallback">请启用 JavaScript 以横向翻页。全部页面文字已包含在本文件中。</div></noscript><script id="speaker-data" type="application/json">{payload}</script><script>{js}</script><script id="license" type="text/plain">{license_text}</script></body></html>'''
+    lines = ['# ' + data['title'], '', data['subtitle'], '', '第一章参考时长 20 分钟，第二章性能调优预留。', '指令模板为复盘整理，并非历史对话逐字记录。', '']
+    for i, s in enumerate(data['slides'], 1):
+        lines += [f"## {i:02d}. {s['title'].replace(chr(10), ' ')}（{s['minutes']} 分钟）", '', s['notes'], '']
+        if 'prompt' in s:
+            lines += ['### 指令模板', '', '```text', s['prompt'], '```', '']
+        for key in s['sources']:
+            v = sources[key]
+            lines.append(f"- 来源：[{v['label']}]({v['url']})")
+        lines.append('')
+    return {'index.html': document, 'speaker-notes.md': '\n'.join(lines)}
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--check', action='store_true')
+    args = parser.parse_args()
+    for name, text in build().items():
+        path = TALK / name
+        if args.check:
+            if not path.exists() or path.read_text(encoding='utf8') != text:
+                raise SystemExit(f'Stale generated file: {path.name}')
+        else:
+            path.write_text(text, encoding='utf8')
+    print('Lecture files are current.' if args.check else 'Built HTML lecture and speaker notes.')

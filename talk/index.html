@@ -1,0 +1,1495 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Code Agent 辅助池化开发，华为企业汇报风讲解文件。第一章模型适配，第二章性能调优预留。"><title>Code Agent 辅助池化开发</title><style>:root{
+    /* ============ Huawei corporate theme (default: classic red) ============
+       Switch theme: copy one :root block from references/themes-huawei.md and
+       replace the variables in this section only. */
+    --paper:#f7f8fa;
+    --paper-rgb:247,248,250;
+    --card:#ffffff;
+    --ink:#22252b;
+    --ink-rgb:34,37,43;
+    --muted:#6f7680;
+    --line:#dfe3e8;
+    --line-strong:#c7ccd4;
+    --brand-red:#c7000b;
+    --brand-red-rgb:199,0,11;
+    --brand-red-dark:#990008;
+    --brand-red-soft:#f5e5e7;
+    --brand-black:#111111;
+    --brand-grey:#f0f2f5;
+    --shadow:0 18px 46px rgba(15,23,42,.12);
+    --shadow-soft:0 10px 26px rgba(15,23,42,.10);
+
+    --sans:"Inter","Noto Sans SC","Microsoft YaHei UI",Arial,sans-serif;
+    --sans-zh:"Noto Sans SC","Microsoft YaHei UI",Arial,sans-serif;
+    --mono:"JetBrains Mono","SFMono-Regular",Consolas,monospace;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden}
+  body{
+    font-family:var(--sans);
+    color:var(--ink);
+    background:var(--paper);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:geometricPrecision;
+  }
+  body.low-power *,body.low-power *::before,body.low-power *::after{
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+
+  #deck{
+    display:flex;
+    width:100vw;
+    height:100vh;
+    transition:transform .72s cubic-bezier(.22,1,.36,1);
+  }
+  body.low-power #deck{transition:none!important}
+
+  .slide{
+    position:relative;
+    flex:0 0 100vw;
+    width:100vw;
+    height:100vh;
+    padding:7.2vh 7vw 7vh;
+    overflow:hidden;
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.94),rgba(247,248,250,.96)),
+      radial-gradient(circle at 78% 12%,rgba(var(--brand-red-rgb),.08),transparent 22vw),
+      radial-gradient(circle at 12% 88%,rgba(17,17,17,.045),transparent 28vw);
+  }
+  .slide::before,
+  .slide::after{
+    content:"";
+    position:absolute;
+    pointer-events:none;
+    border-radius:999px;
+    z-index:0;
+  }
+  .slide::before{
+    width:13vw;
+    height:13vw;
+    right:6vw;
+    top:10vh;
+    background:linear-gradient(145deg,#fff,rgba(223,227,232,.95));
+    box-shadow:inset -12px -12px 22px rgba(255,255,255,.9),inset 10px 10px 26px rgba(111,118,128,.14),0 14px 28px rgba(15,23,42,.08);
+    opacity:.32;
+  }
+  .slide::after{
+    width:2.6vw;
+    height:2.6vw;
+    left:6.3vw;
+    bottom:8vh;
+    background:var(--brand-red);
+    box-shadow:13vw -72vh 0 -1.4vw rgba(var(--brand-red-rgb),.9),73vw -6vh 0 -1vw rgba(var(--brand-red-rgb),.85),82vw -78vh 0 -1.1vw rgba(var(--brand-red-rgb),.9);
+    opacity:.18;
+  }
+  .slide > *{position:relative;z-index:1}
+
+  .slide.dark{
+    color:#fff;
+    background:
+      linear-gradient(135deg,var(--brand-red-dark),var(--brand-red) 54%,#e34034),
+      radial-gradient(circle at 82% 18%,rgba(255,255,255,.22),transparent 22vw);
+  }
+  .slide.dark::before{
+    background:rgba(255,255,255,.14);
+    box-shadow:inset -10px -10px 18px rgba(255,255,255,.18),inset 10px 10px 26px rgba(0,0,0,.14);
+    opacity:.55;
+  }
+  .slide.dark::after{background:#fff;box-shadow:14vw -66vh 0 -1.5vw rgba(255,255,255,.72),72vw -7vh 0 -1vw rgba(255,255,255,.58);opacity:.24}
+
+  .brand-lockup{
+    position:absolute;
+    right:6.4vw;
+    top:4.6vh;
+    display:flex;
+    align-items:center;
+    gap:.58vw;
+    color:var(--brand-black);
+    font-weight:800;
+    letter-spacing:.01em;
+    font-size:1.08vw;
+    z-index:3;
+  }
+  .dark .brand-lockup{color:#fff}
+  .brand-mark{
+    width:1.62vw;
+    height:1.62vw;
+    flex:none;
+    color:var(--brand-red);
+    background:currentColor;
+    -webkit-mask:url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTMuNjcgNi4xNFMxLjgyIDcuOTEgMS43MiA5Ljc4di4zNWMuMDggMS41MSAxLjIyIDIuNCAxLjIyIDIuNCAxLjgzIDEuNzkgNi4yNiA0LjA0IDcuMyA0LjU1IDAgMCAuMDYuMDMuMS0uMDFsLjAyLS4wNHYtLjA0QzcuNTIgMTAuOCAzLjY3IDYuMTQgMy42NyA2LjE0ek05LjY1IDE4LjZjLS4wMi0uMDgtLjEtLjA4LS4xLS4wOGwtNy4zOC4yNmMuOCAxLjQzIDIuMTUgMi41MyAzLjU2IDIuMi45Ni0uMjUgMy4xNi0xLjc4IDMuODgtMi4zLjA2LS4wNS4wNC0uMDkuMDQtLjA5em0uMDgtLjc4QzYuNDkgMTUuNjMuMjEgMTIuMjguMjEgMTIuMjhjLS4xNS40Ni0uMi45LS4yMSAxLjN2LjA3YzAgMS4wNy40IDEuODIuNCAxLjgyLjggMS42OSAyLjM0IDIuMiAyLjM0IDIuMi43LjMgMS40LjMxIDEuNC4zMS4xMi4wMiA0LjQgMCA1LjU0IDAgLjA1IDAgLjA4LS4wNS4wOC0uMDV2LS4wNmMwLS4wMy0uMDMtLjA1LS4wMy0uMDV6TTkuMDYgMy4xOWEzLjQyIDMuNDIgMCAwMC0yLjU3IDMuMTV2LjQxYy4wMy42LjE2IDEuMDUuMTYgMS4wNS42NiAyLjkgMy44NiA3LjY1IDQuNTUgOC42NS4wNS4wNS4xLjAzLjEuMDNhLjEuMSAwIDAwLjA2LS4xYzEuMDYtMTAuNi0xLjExLTEzLjQyLTEuMTEtMTMuNDItLjMyLjAyLTEuMTkuMjMtMS4xOS4yM3ptOC4yOTkgMi4yN3MtLjQ5LTEuOC0yLjQ0LTIuMjhjMCAwLS41Ny0uMTQtMS4xNy0uMjIgMCAwLTIuMTggMi44MS0xLjEyIDEzLjQzLjAxLjA3LjA2LjA4LjA2LjA4LjA3LjAzLjEtLjAzLjEtLjAzLjcyLTEuMDMgMy45LTUuNzYgNC41NS04LjY0IDAgMCAuMzYtMS40LjAyLTIuMzR6bS0yLjkyIDEzLjA3cy0uMDcgMC0uMDkuMDVjMCAwLS4wMS4wNy4wMy4xLjcuNTEgMi44NSAyIDMuODggMi4zIDAgMCAuMTYuMDUuNDMuMDZoLjE0Yy42OS0uMDIgMS45LS4zNyAzLTIuMjZsLTcuNC0uMjV6bTcuODMtOC40MWMuMTQtMi4wNi0xLjk0LTMuOTctMS45NC0zLjk4IDAgMC0zLjg1IDQuNjYtNi42NyAxMC44IDAgMC0uMDMuMDguMDIuMTNsLjA0LjAxaC4wNmMxLjA2LS41MyA1LjQ2LTIuNzcgNy4yOC00LjU0IDAgMCAxLjE1LS45MyAxLjIxLTIuNDJ6bTEuNTIgMi4xNHMtNi4yOCAzLjM3LTkuNTIgNS41NWMwIDAtLjA1LjA0LS4wMy4xMSAwIDAgLjAzLjA2LjA3LjA2IDEuMTYgMCA1LjU2IDAgNS42Ny0uMDIgMCAwIC41Ny0uMDIgMS4yNy0uMjkgMCAwIDEuNTYtLjUgMi4zNy0yLjI3IDAgMCAuNzMtMS40NS4xNy0zLjE0eiIvPjwvc3ZnPg==") center/contain no-repeat;
+    mask:url("data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTMuNjcgNi4xNFMxLjgyIDcuOTEgMS43MiA5Ljc4di4zNWMuMDggMS41MSAxLjIyIDIuNCAxLjIyIDIuNCAxLjgzIDEuNzkgNi4yNiA0LjA0IDcuMyA0LjU1IDAgMCAuMDYuMDMuMS0uMDFsLjAyLS4wNHYtLjA0QzcuNTIgMTAuOCAzLjY3IDYuMTQgMy42NyA2LjE0ek05LjY1IDE4LjZjLS4wMi0uMDgtLjEtLjA4LS4xLS4wOGwtNy4zOC4yNmMuOCAxLjQzIDIuMTUgMi41MyAzLjU2IDIuMi45Ni0uMjUgMy4xNi0xLjc4IDMuODgtMi4zLjA2LS4wNS4wNC0uMDkuMDQtLjA5em0uMDgtLjc4QzYuNDkgMTUuNjMuMjEgMTIuMjguMjEgMTIuMjhjLS4xNS40Ni0uMi45LS4yMSAxLjN2LjA3YzAgMS4wNy40IDEuODIuNCAxLjgyLjggMS42OSAyLjM0IDIuMiAyLjM0IDIuMi43LjMgMS40LjMxIDEuNC4zMS4xMi4wMiA0LjQgMCA1LjU0IDAgLjA1IDAgLjA4LS4wNS4wOC0uMDV2LS4wNmMwLS4wMy0uMDMtLjA1LS4wMy0uMDV6TTkuMDYgMy4xOWEzLjQyIDMuNDIgMCAwMC0yLjU3IDMuMTV2LjQxYy4wMy42LjE2IDEuMDUuMTYgMS4wNS42NiAyLjkgMy44NiA3LjY1IDQuNTUgOC42NS4wNS4wNS4xLjAzLjEuMDNhLjEuMSAwIDAwLjA2LS4xYzEuMDYtMTAuNi0xLjExLTEzLjQyLTEuMTEtMTMuNDItLjMyLjAyLTEuMTkuMjMtMS4xOS4yM3ptOC4yOTkgMi4yN3MtLjQ5LTEuOC0yLjQ0LTIuMjhjMCAwLS41Ny0uMTQtMS4xNy0uMjIgMCAwLTIuMTggMi44MS0xLjEyIDEzLjQzLjAxLjA3LjA2LjA4LjA2LjA4LjA3LjAzLjEtLjAzLjEtLjAzLjcyLTEuMDMgMy45LTUuNzYgNC41NS04LjY0IDAgMCAuMzYtMS40LjAyLTIuMzR6bS0yLjkyIDEzLjA3cy0uMDcgMC0uMDkuMDVjMCAwLS4wMS4wNy4wMy4xLjcuNTEgMi44NSAyIDMuODggMi4zIDAgMCAuMTYuMDUuNDMuMDZoLjE0Yy42OS0uMDIgMS45LS4zNyAzLTIuMjZsLTcuNC0uMjV6bTcuODMtOC40MWMuMTQtMi4wNi0xLjk0LTMuOTctMS45NC0zLjk4IDAgMC0zLjg1IDQuNjYtNi42NyAxMC44IDAgMC0uMDMuMDguMDIuMTNsLjA0LjAxaC4wNmMxLjA2LS41MyA1LjQ2LTIuNzcgNy4yOC00LjU0IDAgMCAxLjE1LS45MyAxLjIxLTIuNDJ6bTEuNTIgMi4xNHMtNi4yOCAzLjM3LTkuNTIgNS41NWMwIDAtLjA1LjA0LS4wMy4xMSAwIDAgLjAzLjA2LjA3LjA2IDEuMTYgMCA1LjU2IDAgNS42Ny0uMDIgMCAwIC41Ny0uMDIgMS4yNy0uMjkgMCAwIDEuNTYtLjUgMi4zNy0yLjI3IDAgMCAuNzMtMS40NS4xNy0zLjE0eiIvPjwvc3ZnPg==") center/contain no-repeat;
+  }
+  .dark .brand-mark{color:#fff}
+
+  .chrome{
+    position:absolute;
+    left:6.4vw;
+    right:6.4vw;
+    top:4.6vh;
+    min-height:3.2vh;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:1px solid var(--line);
+    padding-bottom:1.1vh;
+    color:var(--muted);
+    font-size:.78vw;
+    letter-spacing:.02em;
+    z-index:2;
+  }
+  .dark .chrome{border-color:rgba(255,255,255,.28);color:rgba(255,255,255,.78)}
+  .chrome .l{
+    display:flex;
+    align-items:center;
+    gap:.72vw;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .dark .chrome .l{color:#fff}
+  .chrome .square{
+    width:.9vw;
+    height:.9vw;
+    background:var(--brand-red);
+    box-shadow:-.38vw -.38vw 0 0 rgba(var(--brand-red-rgb),.16);
+    flex:none;
+  }
+  .dark .chrome .square{background:#fff;box-shadow:-.38vw -.38vw 0 0 rgba(255,255,255,.22)}
+
+  .kicker{
+    font-family:var(--mono);
+    font-size:.78vw;
+    line-height:1;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--brand-red);
+    font-weight:600;
+  }
+  .dark .kicker{color:rgba(255,255,255,.82)}
+  .h-hero{
+    font-family:var(--sans-zh);
+    font-size:min(5.8vw,10.3vh);
+    line-height:1.02;
+    letter-spacing:0;
+    font-weight:900;
+  }
+  .h-xl{
+    font-family:var(--sans-zh);
+    font-size:min(4vw,7.4vh);
+    line-height:1.08;
+    font-weight:800;
+    letter-spacing:0;
+  }
+  .h-md{
+    font-family:var(--sans-zh);
+    font-size:min(2.1vw,4.1vh);
+    line-height:1.2;
+    font-weight:800;
+  }
+  .lead{
+    font-size:1.25vw;
+    line-height:1.72;
+    color:var(--muted);
+    font-weight:400;
+  }
+  .dark .lead{color:rgba(255,255,255,.84)}
+  .body-copy{
+    font-size:1vw;
+    line-height:1.82;
+    color:#444b55;
+  }
+  .dark .body-copy{color:rgba(255,255,255,.78)}
+  .meta{
+    font-family:var(--mono);
+    font-size:.76vw;
+    color:var(--muted);
+    letter-spacing:.04em;
+  }
+
+  .red-rule{height:.52vh;background:var(--brand-red);width:100%}
+  .hairline{height:1px;background:var(--line);width:100%}
+  .dark .hairline{background:rgba(255,255,255,.22)}
+
+  .red-panel{
+    background:linear-gradient(90deg,var(--brand-red),#ef4a3d);
+    color:#fff;
+    padding:4.2vh 3.4vw;
+    min-height:32vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    box-shadow:var(--shadow-soft);
+  }
+  .red-panel .en{
+    font-family:var(--mono);
+    border:1px solid rgba(255,255,255,.42);
+    color:rgba(255,255,255,.9);
+    padding:.5vh .72vw;
+    width:max-content;
+    font-size:.86vw;
+    letter-spacing:.08em;
+  }
+
+  .cover-shell{
+    height:100%;
+    display:grid;
+    grid-template-columns:1.05fr .95fr;
+    align-items:center;
+    gap:5vw;
+  }
+  .cover-badge{
+    width:10.4vw;
+    height:10.4vw;
+    border-radius:999px;
+    background:linear-gradient(145deg,#fff,#e9edf2);
+    box-shadow:inset -16px -16px 28px rgba(255,255,255,.95),inset 12px 12px 24px rgba(111,118,128,.14),0 22px 46px rgba(15,23,42,.14);
+    display:grid;
+    place-items:center;
+    margin-bottom:3.4vh;
+  }
+  .cover-badge .brand-mark{
+    width:5.8vw;
+    height:5.8vw;
+    color:var(--brand-red);
+  }
+  .cover-title-wrap{display:flex;flex-direction:column;gap:2.6vh}
+  .cover-subtitle{max-width:46ch}
+  .cover-wave{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    height:19vh;
+    background:
+      linear-gradient(8deg,var(--brand-red) 0 45%,transparent 46%),
+      linear-gradient(6deg,rgba(17,17,17,.14) 0 51%,transparent 52%);
+    opacity:.96;
+  }
+  .cover-meta{
+    position:absolute;
+    left:7vw;
+    bottom:5vh;
+    color:#fff;
+    display:grid;
+    gap:.86vh;
+    font-size:.88vw;
+    z-index:2;
+  }
+  .cover-visual{
+    min-height:48vh;
+    position:relative;
+  }
+  .orb{
+    position:absolute;
+    border-radius:50%;
+    background:linear-gradient(145deg,#fff,#e6eaef);
+    box-shadow:inset -10px -10px 20px rgba(255,255,255,.95),inset 8px 8px 20px rgba(111,118,128,.18),0 16px 28px rgba(15,23,42,.10);
+  }
+  .orb.red{background:linear-gradient(145deg,#f83230,var(--brand-red));box-shadow:0 12px 24px rgba(var(--brand-red-rgb),.26)}
+
+  .agenda-layout{
+    height:100%;
+    display:grid;
+    grid-template-columns:.72fr 1.28fr;
+    gap:5vw;
+    align-items:center;
+  }
+  .agenda-list{display:flex;flex-direction:column;gap:1.25vh}
+  .agenda-item{
+    display:grid;
+    grid-template-columns:3.6vw 1fr;
+    align-items:center;
+    min-height:6.2vh;
+    background:#e6e9ed;
+    color:#505965;
+  }
+  .agenda-item .idx{
+    height:100%;
+    display:grid;
+    place-items:center;
+    background:var(--brand-red);
+    color:#fff;
+    font-family:var(--mono);
+    font-weight:700;
+  }
+  .agenda-item .txt{padding:0 1.25vw;font-size:1.02vw;font-weight:700}
+
+  .section-layout{
+    height:100%;
+    display:grid;
+    grid-template-columns:.82fr 1.18fr;
+    gap:4.5vw;
+    align-items:center;
+  }
+  .section-no{
+    width:8vw;
+    height:8vw;
+    border-radius:999px;
+    background:#fff;
+    box-shadow:var(--shadow);
+    display:grid;
+    place-items:center;
+    color:var(--brand-red);
+    font-family:var(--mono);
+    font-size:2.2vw;
+    font-weight:800;
+    margin-bottom:2.6vh;
+  }
+
+  .grid-2,.grid-3,.grid-4{align-items:stretch}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:3vw}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:2vw}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1.4vw}
+  .grid-12{display:grid;grid-template-columns:repeat(12,1fr);gap:1vw}
+  .span-4{grid-column:span 4}.span-5{grid-column:span 5}.span-6{grid-column:span 6}.span-7{grid-column:span 7}.span-8{grid-column:span 8}
+
+  .content-stack{display:flex;flex-direction:column;gap:2.2vh}
+  .same-size,
+  .equal-children{
+    align-items:stretch;
+  }
+  .same-size > *{
+    height:100%;
+    min-height:0;
+  }
+  .equal-children > *{
+    height:100%;
+    min-height:0;
+  }
+  .equal-children{
+    display:grid;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    box-shadow:var(--shadow-soft);
+    padding:3vh 2vw;
+  }
+  .grid-2 > .card,.grid-3 > .card,.grid-4 > .card{
+    height:100%;
+    display:flex;
+    flex-direction:column;
+  }
+  .grid-2 > .image-frame,.grid-3 > .image-frame,.grid-4 > .image-frame{height:100%}
+  .card.flat{box-shadow:none;background:#fff}
+  .mini-card{
+    min-height:0;
+    border:1px solid var(--line);
+    background:#fff;
+    padding:1.25vh 1vw;
+    display:grid;
+    grid-template-rows:auto 1fr;
+    gap:.45vh;
+  }
+  .mini-card strong{
+    color:var(--ink);
+    font-size:clamp(.84rem,.96vw,1.08rem);
+    line-height:1.22;
+    font-weight:800;
+  }
+  .mini-card .card-body{
+    font-size:clamp(.76rem,.84vw,.98rem);
+    line-height:1.34;
+  }
+  .card strong{
+    display:inline-block;
+    color:var(--ink);
+    font-weight:800;
+  }
+  .card-title{
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:clamp(1.08rem,1.34vw,1.56rem);
+    line-height:1.18;
+    font-weight:800;
+    color:var(--ink);
+    margin-bottom:1.1vh;
+  }
+  .card-body{font-size:clamp(.92rem,1.02vw,1.18rem);line-height:1.58;color:var(--muted)}
+  .num-pill{
+    display:inline-grid;
+    place-items:center;
+    min-width:2.4vw;
+    height:2.4vw;
+    border-radius:999px;
+    background:var(--brand-red);
+    color:#fff;
+    font-family:var(--mono);
+    font-weight:800;
+    margin-bottom:1.4vh;
+  }
+  .icon-disc{
+    width:4.4vw;
+    height:4.4vw;
+    border-radius:999px;
+    background:var(--brand-red);
+    color:#fff;
+    display:grid;
+    place-items:center;
+    margin-bottom:1.5vh;
+    box-shadow:0 14px 28px rgba(var(--brand-red-rgb),.22);
+  }
+  .icon-disc .lucide{width:2vw;height:2vw;stroke-width:1.8}
+
+  .timeline-v{display:grid;grid-template-columns:1fr 3vw 1fr;gap:2vw;align-items:start}
+  .tl-axis{position:relative;min-height:58vh}
+  .tl-axis::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line-strong)}
+  .tl-dot{
+    width:2.6vw;
+    height:2.6vw;
+    border-radius:999px;
+    background:var(--brand-red);
+    color:#fff;
+    display:grid;
+    place-items:center;
+    font-family:var(--mono);
+    font-weight:800;
+    margin:0 auto 6.5vh;
+    position:relative;
+    z-index:1;
+  }
+  .tl-card{min-height:10vh;border-top:3px solid var(--brand-red);padding-top:1.3vh;margin-bottom:5.4vh}
+  .tl-card .year{font-family:var(--mono);color:var(--brand-red);font-weight:800;margin-bottom:.6vh}
+
+  .bar-chart{display:flex;flex-direction:column;gap:1.35vh}
+  .bar-row{display:grid;grid-template-columns:7vw 1fr 4vw;gap:1vw;align-items:center;font-size:.9vw;color:var(--muted)}
+  .bar-track{height:2.2vh;background:#e7eaee;position:relative;overflow:hidden}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--brand-red-dark),var(--brand-red));width:var(--v,50%)}
+  .bar-row strong{font-family:var(--mono);color:var(--ink)}
+  .stat-big{font-family:var(--mono);font-size:min(5.2vw,9vh);line-height:1;color:var(--brand-red);font-weight:800}
+
+  .process{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:0;
+    align-items:stretch;
+  }
+  .process-step{
+    position:relative;
+    background:#fff;
+    border:1px solid var(--line);
+    padding:3vh 1.6vw;
+    min-height:30vh;
+  }
+  .process-step:not(:last-child)::after{
+    content:"";
+    position:absolute;
+    right:-1.2vw;
+    top:50%;
+    transform:translateY(-50%);
+    width:0;
+    height:0;
+    border-top:1.5vw solid transparent;
+    border-bottom:1.5vw solid transparent;
+    border-left:1.2vw solid var(--brand-red);
+    z-index:2;
+  }
+
+  .arrow-timeline{
+    --axis-y:50%;
+    --line-left:4%;
+    --line-right:6.4%;
+    --line-h:5.2vh;
+    --head-right:1.5%;
+    --head-w:5vw;
+    --head-h:8vh;
+    position:relative;
+    margin-top:7vh;
+    height:36vh;
+  }
+  .arrow-timeline-line{
+    position:absolute;
+    left:var(--line-left);
+    right:var(--line-right);
+    top:var(--axis-y);
+    height:var(--line-h);
+    background:var(--brand-red);
+    transform:translateY(-50%);
+  }
+  .arrow-timeline-head{
+    position:absolute;
+    right:var(--head-right);
+    top:var(--axis-y);
+    width:var(--head-w);
+    height:var(--head-h);
+    background:var(--brand-red);
+    clip-path:polygon(0 0,100% 50%,0 100%);
+    transform:translateY(-50%);
+  }
+  .arrow-timeline-node{
+    position:absolute;
+    top:var(--axis-y);
+    width:1.8vw;
+    height:1.8vw;
+    border-radius:999px;
+    background:var(--brand-red);
+    box-shadow:0 0 0 .8vw rgba(var(--brand-red-rgb),.10);
+    transform:translate(-50%,-50%);
+    z-index:2;
+  }
+  .arrow-timeline-card{
+    position:absolute;
+    width:18vw;
+    z-index:3;
+  }
+  .arrow-timeline-card.top{top:0}
+  .arrow-timeline-card.bottom{bottom:0}
+
+  .image-frame{
+    background:#fff;
+    border:1px solid var(--line);
+    padding:.7vw;
+    box-shadow:var(--shadow-soft);
+  }
+  .image-frame img{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  .r-16x9{aspect-ratio:16/9}
+  .r-16x10{aspect-ratio:16/10}
+  .r-4x3{aspect-ratio:4/3}
+  .fit-contain img{object-fit:contain;background:#fff}
+  .caption{
+    margin-top:1vh;
+    font-size:.76vw;
+    color:var(--muted);
+    line-height:1.5;
+  }
+
+  .quote-band{
+    background:linear-gradient(90deg,var(--brand-red),var(--brand-red-dark));
+    color:#fff;
+    padding:3.4vh 3vw;
+    font-family:var(--sans-zh);
+    font-size:2.4vw;
+    line-height:1.24;
+    font-weight:900;
+  }
+  .bullet-list{
+    display:grid;
+    gap:1.15vh;
+  }
+  .bullet-item{
+    display:grid;
+    grid-template-columns:1.1vw 1fr;
+    gap:1vw;
+    align-items:start;
+  }
+  .bullet-dot{
+    width:.72vw;
+    height:.72vw;
+    border-radius:50%;
+    background:var(--brand-red);
+    margin-top:.5vh;
+  }
+
+  [data-anim]{
+    opacity:0;
+    transform:translateY(16px);
+    transition:opacity .56s ease,transform .56s cubic-bezier(.22,1,.36,1);
+  }
+  .slide.active [data-anim]{opacity:1;transform:none}
+  .slide.active [data-anim]:nth-child(2){transition-delay:.06s}
+  .slide.active [data-anim]:nth-child(3){transition-delay:.12s}
+  .slide.active [data-anim]:nth-child(4){transition-delay:.18s}
+  body.low-power [data-anim],#overview [data-anim]{opacity:1!important;transform:none!important}
+
+  #hint{
+    position:fixed;
+    right:1.5vw;
+    bottom:1.8vh;
+    z-index:20;
+    color:rgba(34,37,43,.56);
+    font-size:.72vw;
+    font-family:var(--mono);
+    letter-spacing:.02em;
+    user-select:none;
+  }
+  body.low-power #hint{color:var(--brand-red)}
+  .page-no{
+    position:absolute;
+    left:2.2vw;
+    bottom:2.2vh;
+    z-index:4;
+    font-family:var(--mono);
+    font-size:.86vw;
+    line-height:1;
+    letter-spacing:.08em;
+    color:rgba(34,37,43,.42);
+    pointer-events:none;
+  }
+  .dark .page-no{color:rgba(255,255,255,.72)}
+  .hw-cover .page-no{color:rgba(255,255,255,.74)}
+  #nav{
+    position:fixed;
+    left:50%;
+    bottom:2.1vh;
+    transform:translateX(-50%);
+    display:flex;
+    gap:.55vw;
+    z-index:20;
+  }
+  #nav button{
+    width:.55vw;
+    height:.55vw;
+    border:0;
+    border-radius:50%;
+    background:rgba(34,37,43,.2);
+    cursor:pointer;
+    padding:0;
+  }
+  #nav button.active{background:var(--brand-red);transform:scale(1.35)}
+  #overview{
+    position:fixed;
+    inset:0;
+    background:rgba(10,10,10,.88);
+    z-index:30;
+    display:none;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:18px;
+    padding:24px;
+    overflow:auto;
+  }
+  body.overview #overview{display:grid}
+  .thumb{
+    position:relative;
+    aspect-ratio:16/9;
+    background:#fff;
+    overflow:hidden;
+    cursor:pointer;
+    border:1px solid rgba(255,255,255,.18);
+  }
+  .thumb .slide{
+    transform:scale(.25);
+    transform-origin:top left;
+    pointer-events:none;
+  }
+
+  @media (max-width:900px){
+    .slide{padding:8vh 6vw 8vh}
+    .cover-shell,.agenda-layout,.section-layout,.grid-2{grid-template-columns:1fr;gap:3vh}
+    .grid-3,.grid-4,.process{grid-template-columns:1fr 1fr}
+    .brand-lockup{font-size:2.8vw}
+    .brand-mark{width:3.4vw;height:3.4vw}
+    .h-hero{font-size:12vw}
+    .h-xl{font-size:8.8vw}
+    .lead{font-size:3.5vw}
+    .card-title{font-size:3.6vw;white-space:normal}
+    .body-copy,.card-body{font-size:2.8vw}
+    .chrome{font-size:2.2vw}
+    .page-no{font-size:2.2vw;left:3.5vw;bottom:2.8vh}
+    #hint{font-size:2vw}
+  }
+
+/* Template-derived presentation, AGPL-3.0. See THIRD_PARTY_NOTICES.md. */
+:root{--sans:"Microsoft YaHei UI","PingFang SC","Noto Sans SC",Arial,sans-serif;--sans-zh:var(--sans);--mono:Consolas,"SFMono-Regular",monospace}
+.slide{background:var(--paper);padding:7vh 7vw 9vh}.slide::before,.slide::after{display:none}.slide.dark:not(.hero){background:var(--ink)}.slide.dark.hero{background:var(--brand-red-dark)}.slide .brand-lockup{position:absolute;right:6.4vw;top:4.6vh;font-size:min(1.25vw,2.3vh)}.slide .chrome{position:absolute;left:7vw;top:4.6vh;width:calc(100% - 28vw);padding:0 0 1.1vh;font-size:min(1.2vw,2.2vh)}.chrome .l{font-size:inherit}.h-xl{font-size:min(3.8vw,6.5vh);line-height:1.18}.h-hero{font-size:min(5.5vw,9vh);line-height:1.16;font-weight:700}.h-md{font-size:min(2.3vw,4vh);line-height:1.4}.kicker,.meta{font-size:min(1.15vw,2vh);line-height:1.5}.lead{font-size:min(1.7vw,3vh);line-height:1.7}.body-copy,.card-body{font-size:min(1.65vw,2.9vh);line-height:1.7}.card-title{font-size:min(2vw,3.5vh);white-space:normal;line-height:1.45}.card,.mini-card{box-shadow:none;border-radius:0;border:0}.card{background:#fff;padding:2.5vh 2vw}.dark .card{background:rgba(255,255,255,.07)}.dark .card-title,.dark .card-body{color:inherit}.dark .card-body{opacity:.82}.hero.light .red-panel{background:var(--brand-red)}.slide-body{height:100%;padding-top:8vh;display:flex;flex-direction:column;gap:3.5vh;min-height:0}.slide-body>.content-stack{gap:1.5vh}.slide-body>.grid-2,.slide-body>.grid-3{flex:1;min-height:0;align-items:stretch}.lead.short{max-width:52ch}.cover-shell{grid-template-columns:1fr .65fr}.cover-title-wrap{gap:3vh}.cover-line{font-size:min(1.5vw,2.7vh);color:var(--muted);margin-top:1vh}.cover-badge{background:transparent;box-shadow:none;width:auto;height:auto;justify-content:start}.cover-badge .brand-mark{width:5vw;height:5vw}.cover-visual{display:flex;align-items:center;justify-content:center}.cover-code{font:700 min(17vw,29vh)/1 var(--sans);color:var(--brand-red);letter-spacing:-1vw}.cover-meta{font-size:min(1.2vw,2vh);background:var(--brand-red);min-height:6vh;padding:1.5vh 7vw;bottom:0}.cover-wave{height:7vh;background:var(--brand-red);clip-path:none;bottom:0}.hw-cover .page-no{bottom:8vh;color:var(--muted)}.agenda-item{padding:1vh 0;min-height:12vh;border:0;background:var(--brand-grey)}.agenda-item .idx{width:6vw;font-size:2vw;flex:none}.agenda-item .txt{font-size:min(2.2vw,4vh);padding:0 2vw}.agenda-item .txt>small{display:block;font-size:min(1.3vw,2.3vh);line-height:1.6;font-weight:400;margin-top:1vh;color:var(--muted)}.agenda-item .agenda-status{display:block;font:400 min(1.1vw,2vh) var(--mono);margin-top:1vh;color:var(--brand-red)}.agenda-layout{grid-template-columns:.65fr 1.35fr;align-items:center}.agenda-list{gap:3vh}.section-layout{grid-template-columns:1fr 1fr;gap:5vw}.section-no{font-size:min(11vw,18vh);line-height:1;max-width:18vw;min-height:0;padding:0;color:var(--brand-red);background:none;box-shadow:none}.dark .section-no{color:#fff}.section-layout .red-panel{min-height:35vh;padding:4vh 3vw}.dark .section-layout .red-panel{background:rgba(255,255,255,.1);border-left:4px solid #fff}.section-layout .lead{margin-top:2vh}.prompt-block{font:400 min(1.55vw,2.75vh)/1.9 var(--sans);white-space:pre-wrap;padding:3vh 2.5vw;border-left:4px solid var(--brand-red);background:#fff;align-self:start}.prompt-side{display:flex;flex-direction:column;justify-content:space-between;padding:0 1vw;gap:2vh}.prompt-side h3{font-size:min(1.4vw,2.5vh);color:var(--brand-red);margin-bottom:1vh}.prompt-side p{font-size:min(1.55vw,2.75vh);line-height:1.7}.followup-line{font-size:min(1.6vw,2.8vh);padding:1.5vh 0;border-top:1px solid var(--line);line-height:1.65;color:var(--brand-red)}.small-note{font-size:min(1.1vw,1.9vh);color:var(--muted);line-height:1.6}.dark .small-note{color:rgba(255,255,255,.7)}.dark .followup-line{border-color:rgba(255,255,255,.25);color:#fff}.lecture-quote{font-size:min(5vw,9vh);font-weight:600;line-height:1.4;max-width:18ch}.quote-layout{height:100%;padding-top:8vh;display:flex;flex-direction:column;justify-content:center;gap:4vh}.quote-layout .lead{max-width:50ch}.equal-children{align-items:stretch}.grid-3 .card{display:flex;flex-direction:column;gap:2vh;border-top:4px solid var(--brand-red)}.dark .grid-3 .card{border-color:#fff}.card-detail{font-size:min(1.3vw,2.3vh);line-height:1.7;color:var(--muted);margin-top:auto}.dark .card-detail{color:#d7dade}.loop-board{display:grid;grid-template-rows:auto 1fr auto;gap:2vh;height:100%}.loop-boundary{border:2px solid var(--brand-red);padding:1.5vh 1.4vw;text-align:center;font-size:min(1.5vw,2.7vh);color:var(--brand-red);line-height:1.5}.loop-center{display:grid;grid-template-columns:1fr .9fr 1fr;gap:1vw;align-items:center}.loop-list{display:grid;gap:1vh;grid-auto-rows:1fr;height:100%}.loop-list>div{display:grid;place-items:center;background:var(--brand-grey);font-size:min(1.3vw,2.3vh);padding:1vh;text-align:center}.loop-agent{display:grid;place-items:center;border-radius:50%;width:9vw;height:9vw;background:var(--brand-red);color:#fff;font-size:1.8vw;justify-self:center}.stat-big{font-size:min(6vw,10vh);font-weight:600}.stat-card{border-top:2px solid #fff;padding:2vh 0;display:flex;flex-direction:column;gap:2vh}.stat-card .card-title{font-size:min(1.7vw,3vh)}.stat-card .card-detail{margin-top:0}.compare-left{background:var(--brand-grey)}.compare-right{background:#fff;border-top:4px solid var(--brand-red)}.compare-layout .card{display:flex;flex-direction:column;justify-content:center;gap:2vh}.handoff-list{display:grid;grid-template-columns:1fr 1fr;gap:3vh 3vw;list-style:none}.handoff-list li{font-size:min(2vw,3.5vh);padding:2.5vh 0;border-top:1px solid rgba(255,255,255,.3)}.closing-layout{display:flex;flex-direction:column;height:100%;justify-content:center;gap:4vh}.closing-layout .h-hero{max-width:20ch}.website-link{font-size:min(1.45vw,2.5vh);color:inherit;overflow-wrap:anywhere}.website-link:hover{text-decoration:underline}.bottom-note{font-size:min(1.25vw,2.2vh);line-height:1.6}
+#hint{right:2vw;bottom:1.4vh;font-size:min(1.05vw,1.8vh)}body.dark-bg #hint{color:#e2e4e7}#nav{bottom:1.6vh;gap:.45vw}#nav button{min-width:10px;min-height:10px}#nav button:focus-visible,#controls button:focus-visible,.thumb:focus-visible{outline:3px solid var(--brand-red);outline-offset:5px}#controls{position:fixed;left:7vw;bottom:1.1vh;display:flex;gap:10px;z-index:21}#controls button{background:transparent;border:1px solid var(--line-strong);border-radius:0;color:var(--ink);padding:3px 10px;font:400 min(1.05vw,1.9vh) var(--sans);cursor:pointer}body.dark-bg #controls button{border-color:#adb3ba;color:#fff}#controls button:disabled{opacity:.35;cursor:default}.page-no{left:2vw;font-size:min(1.1vw,2vh);bottom:1.8vh}#overview{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-content:start;background:#22252b;gap:18px;padding:30px}.thumb{appearance:none;display:flex;flex-direction:column;justify-content:space-between;text-align:left;color:var(--ink);padding:22px;border:0;border-radius:0;font:400 18px/1.5 var(--sans);min-height:150px;aspect-ratio:16/9;cursor:pointer}.thumb small{font:14px var(--mono);color:var(--brand-red)}.thumb.active{outline:4px solid var(--brand-red)}#speaker-panel{position:fixed;inset:auto 5vw 7vh;max-height:58vh;overflow:auto;z-index:40;background:#fff;color:var(--ink);border-top:5px solid var(--brand-red);padding:22px 30px;box-shadow:0 5px 35px #0004;line-height:1.9}#speaker-panel[hidden]{display:none}#speaker-panel h2{font-size:22px;margin:0 0 12px}#speaker-panel p{font-size:17px;margin:0 0 15px}#speaker-panel a{color:var(--brand-red);font-size:14px;display:block}#speaker-close{float:right;font-size:16px;cursor:pointer;background:none;border:1px solid var(--line);padding:4px 12px}.fallback{position:fixed;z-index:50;inset:0;background:white;padding:10vh 8vw;font-size:24px}.skip-link{position:fixed;top:-100px;left:15px;z-index:80;background:white;color:var(--brand-red);padding:12px}.skip-link:focus{top:10px}
+@media(max-width:900px) and (orientation:landscape){.slide{padding:7vh 7vw 9vh}.cover-shell{grid-template-columns:1fr .5fr}.agenda-layout{grid-template-columns:.6fr 1.4fr}.section-layout,.grid-2{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:repeat(3,1fr)}.h-hero{font-size:min(5.5vw,9vh)}.h-xl{font-size:min(3.8vw,6.5vh)}.brand-lockup{font-size:1.5vw}.brand-mark{width:2vw;height:2vw}.page-no{font-size:1.3vw}.card-title{font-size:min(2vw,3.5vh)}.body-copy,.card-body{font-size:min(1.65vw,2.9vh)}}
+@media(orientation:portrait){.slide{overflow-y:auto;padding:8vh 6vw 14vh}.slide-body{height:auto;min-height:75vh;gap:3vh;padding-top:4vh}.cover-shell,.agenda-layout,.section-layout,.grid-2,.grid-3{grid-template-columns:1fr;height:auto;gap:3vh}.cover-visual{display:none}.cover-shell{padding-top:7vh}.cover-title-wrap{gap:3vh}.h-hero{font-size:10vw}.h-xl{font-size:8vw}.h-md{font-size:6vw}.lead{font-size:4vw}.body-copy,.card-body,.prompt-side p,.prompt-block{font-size:3.7vw}.card-title{font-size:4.8vw}.card-detail,.small-note,.meta,.kicker,.followup-line,.prompt-side h3{font-size:3.1vw}.slide .chrome{font-size:3vw;max-width:62vw;top:3vh}.slide .brand-lockup{font-size:3vw;top:3vh}.brand-mark{width:4vw;height:4vw}.prompt-side{gap:2vh}.cover-line{font-size:3.7vw}.cover-meta{font-size:3vw}.cover-wave{height:7vh}.agenda-item .txt{font-size:5vw}.agenda-item .txt>small{font-size:3.4vw}.agenda-item .idx{width:12vw;font-size:5vw}.agenda-item .agenda-status{font-size:3vw}.section-no{font-size:20vw}.loop-center{grid-template-columns:1fr .9fr 1fr}.loop-list>div{font-size:3vw}.loop-agent{width:18vw;height:18vw;font-size:4vw}.loop-boundary{font-size:3.5vw}.lecture-quote{font-size:8vw}.stat-big{font-size:14vw}.stat-card .card-title{font-size:4.5vw}.handoff-list{grid-template-columns:1fr}.handoff-list li,.website-link,.bottom-note{font-size:4vw}#hint{font-size:2.6vw;bottom:1vh}#controls{bottom:6vh;left:6vw}#controls button{font-size:3vw;padding:5px 10px}.page-no{font-size:3vw;bottom:7vh}#nav{bottom:4vh;gap:1.4vw}#speaker-panel{inset:auto 4vw 12vh;padding:18px;max-height:65vh}#speaker-panel p{font-size:15px}}
+@media(prefers-reduced-motion:reduce){#deck,[data-anim]{transition:none!important;animation:none!important}[data-anim]{opacity:1!important;transform:none!important}}
+@media print{@page{size:16in 9in;margin:0}html,body{height:auto;overflow:visible;background:#fff}#deck{display:block;transform:none!important;width:auto;height:auto}.slide{width:16in;height:9in;break-after:page;page-break-after:always;overflow:hidden}.slide:last-child{break-after:auto}#controls,#hint,#nav,#overview,#speaker-panel,.skip-link{display:none!important}[data-anim]{opacity:1!important;transform:none!important}.slide,.card,.red-panel{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head>
+<body><a class="skip-link" href="#deck">跳到讲解内容</a><div id="hint">← → 翻页 · ESC 索引 · N 备注 · B 静态</div><main id="deck" tabindex="-1"><section class="slide hw-cover hero light" data-layout="H01" data-animate="cover" id="slide-cover" aria-label="Code Agent 辅助池化开发"><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="cover-shell"><div class="cover-title-wrap"><div class="cover-badge"><span class="brand-mark" aria-hidden="true"></span></div><h1 class="h-hero" data-anim>Code Agent<br>辅助池化开发</h1><p class="lead cover-subtitle" data-anim>新模型适配的方法与人工检查点</p><p class="cover-line">第一章 模型适配 · GLM-5.3-Flash 案例</p></div><div class="cover-visual" aria-hidden="true"><span class="cover-code">AI</span></div></div><div class="cover-wave" aria-hidden="true"></div><div class="cover-meta"><span>技术交流</span><span>第一章参考时长 20 分钟</span></div></section><section class="slide light" data-layout="H02" data-animate="agenda" id="slide-agenda" aria-label="专题安排"><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="agenda-layout"><div class="red-panel" data-anim><h2 class="h-xl">专题安排</h2><div class="en">CONTENTS</div></div><div class="agenda-list"><div class="agenda-item" data-anim><div class="idx">01</div><div class="txt">模型适配<small>怎样交任务、看产物、做反证、审修改、验结果、做交接</small><span class="agenda-status">本次讲解</span></div></div><div class="agenda-item" data-anim><div class="idx">02</div><div class="txt">性能调优<small>后续补充独立案例、实验方法与讲解内容</small><span class="agenda-status">预留章节</span></div></div><p class="small-note">先建立功能正确与证据闭环，再进入性能实验</p></div></div></section><section class="slide hero dark" data-layout="H03" data-animate="divider" id="slide-chapter-one" aria-label="模型适配"><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="section-layout"><div data-anim><div class="section-no">01</div><h2 class="h-xl" style="margin-top:3vh">模型适配</h2><p class="lead">你指挥与检查，Agent 探索与执行</p></div><div class="red-panel" data-anim><h3 class="h-md">每次给任务，都约定一个可检查的产物</h3></div></div></section><section class="slide light" data-layout="H37" data-animate="loop" id="slide-working-loop" aria-label="人和 Agent 的协作分工"><div class="chrome"><div class="l"><span class="square"></span><span>第一章 模型适配</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="slide-body"><div class="content-stack" data-anim><h2 class="h-xl">人和 Agent 的协作分工</h2><p class="lead">把连续执行交给 Agent，把关键判断留在人手里</p></div><div class="grid-2 same-size" style="grid-template-columns:.8fr 1.2fr"><div class="content-stack" data-anim><p class="body-copy">人的任务是给出范围和判断依据。</p><p class="body-copy">Agent 负责连续探索、验证和整理。</p></div><div class="loop-board" data-anim><div class="loop-boundary">目标、资源、验收标准与提交范围</div><div class="loop-center"><div class="loop-list"><div>读取上下文</div><div>提出假设</div><div>执行实验</div><div>整理证据</div></div><div class="loop-agent">Agent</div><div class="loop-list"><div>理解是否正确</div><div>归因是否成立</div><div>修改是否必要</div></div></div><div class="loop-boundary">高影响改动、证据冲突、结论扩大时介入</div></div></div></div></section><section class="slide light" data-layout="H04" data-animate="prompt" id="slide-task-brief" aria-label="一份可执行的适配任务"><div class="chrome"><div class="l"><span class="square"></span><span>1.1 交任务</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="slide-body"><div class="content-stack" data-anim><h2 class="h-xl">一份可执行的适配任务</h2><p class="lead">用目标、约束和验收定义，代替一句“帮我支持池化”</p></div><div class="grid-2" style="grid-template-columns:1.15fr 1fr"><div data-anim><pre class="prompt-block">为 &lt;模型&gt; 适配 &lt;池化场景&gt;。
+先核对代码、SDK、权重与拓扑。
+先给缓存布局表和验证顺序。
+验收包括冷写、外部热读与输出对照。
+无关模型修复独立记录。</pre><p class="small-note" style="margin-top:1.5vh">复盘整理的指令模板</p></div><div class="prompt-side" data-anim><div><h3>Agent 应交付</h3><p>任务回执：实际版本、资源范围、验证顺序、通过条件</p></div><div><h3>人工检查</h3><p>有没有说明怎样区分 HBM 命中与外部池加载？</p></div></div></div><p class="followup-line" data-anim>“先列出每项验收的观察量与证据位置。”</p></div></section><section class="slide dark" data-layout="H05" data-animate="three" id="slide-context-pack" aria-label="Agent 需要的上下文"><div class="chrome"><div class="l"><span class="square"></span><span>1.1 上下文准备</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="slide-body"><div class="content-stack" data-anim><h2 class="h-xl">Agent 需要的上下文</h2><p class="lead">给入口与事实，让它读取原始材料</p></div><div class="grid-3 same-size"><div class="card flat" data-anim><h3 class="card-title">代码入口</h3><p class="card-body">仓库、固定提交、相关符号、已有 PR</p><p class="card-detail">避免从文件名或模型名猜实现</p></div><div class="card flat" data-anim><h3 class="card-title">执行条件</h3><p class="card-body">拓扑、SDK、runner、图模式、可用资源</p><p class="card-detail">要求报告实际环境而非计划环境</p></div><div class="card flat" data-anim><h3 class="card-title">验证入口</h3><p class="card-body">已有 Skill、脚本、最近结果与原始日志</p><p class="card-detail">优先复用，记录适用范围</p></div></div></div></section><section class="slide light" data-layout="H04" data-animate="prompt" id="slide-understanding" aria-label="修改前先检查它的理解"><div class="chrome"><div class="l"><span class="square"></span><span>1.2 看产物</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="slide-body"><div class="content-stack" data-anim><h2 class="h-xl">修改前先检查它的理解</h2><p class="lead">要求布局表与调用链，再用具体例子追问</p></div><div class="grid-2" style="grid-template-columns:1.15fr 1fr"><div data-anim><pre class="prompt-block">先只读，不改代码。
+追踪配置、缓存 spec、张量视图与 connector。
+列出 shape、dtype、stride 与 TP 分片。
+解释谁保存、key 怎么命名、命中检查查哪些 key。
+每项给源码位置，标明未知项。</pre><p class="small-note" style="margin-top:1.5vh">复盘整理的指令模板</p></div><div class="prompt-side" data-anim><div><h3>Agent 应交付</h3><p>带源码来源的缓存布局表与存取调用链</p></div><div><h3>人工检查</h3><p>TP4 时 MLA 副本与 KDA 状态分片，是否被混为一谈？</p></div></div></div><p class="followup-line" data-anim>“给我一个 rank 0 到 3 的具体 key 示例。”</p></div></section><section class="slide hero dark" data-layout="H11" data-animate="quote" id="slide-falsification" aria-label="对 Agent 的一次关键追问"><div class="chrome"><div class="l"><span class="square"></span><span>第一章 模型适配</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="quote-layout"><p class="kicker">对 Agent 的一次关键追问</p><h2 class="lecture-quote" data-anim>什么实验，<br>能推翻你现在的判断？</h2><p class="lead" data-anim>一次只改变一个变量，先看真实观察，再决定下一步修改</p></div></section><section class="slide light" data-layout="H26" data-animate="compare" id="slide-no-pool-control" aria-label="输出异常的对照实验"><div class="chrome"><div class="l"><span class="square"></span><span>1.3 做反证</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="slide-body"><div class="content-stack" data-anim><h2 class="h-xl">输出异常的对照实验</h2><p class="lead">只去掉 connector，其余配置保持一致</p></div><div class="grid-2 same-size compare-layout"><div class="card compare-left" data-anim><h3 class="card-title">当前假设</h3><p class="body-copy">异常输出来自外部缓存加载</p><p class="card-detail">带池化的请求出现异常文本</p></div><div class="card compare-right" data-anim><h3 class="card-title">实际对照</h3><p class="body-copy">关闭池化后，异常仍存在</p><p class="card-detail">Agent 应先检查基础模型路径</p></div></div><p class="followup-line">能够否定“症状必须依赖外部加载”；不能推出“池化已经正确”</p></div></section><section class="slide dark" data-layout="H07" data-animate="checkpoint" id="slide-checkpoint-evidence" aria-label="8705 请求的真实检查点"><div class="chrome"><div class="l"><span class="square"></span><span>1.3 看运行事实</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="slide-body"><div class="content-stack" data-anim><h2 class="h-xl">8705 请求的真实检查点</h2><p class="lead">让 Agent 交出实际 chunk、mask 和 block IDs</p></div><div class="grid-3 same-size"><div class="stat-card" data-anim><div class="stat-big">4352</div><h3 class="card-title">第一步实际终点</h3><p class="card-detail">有有效状态，原 mask 为 False</p></div><div class="stat-card" data-anim><div class="stat-big">0</div><h3 class="card-title">8704 对应 null 槽</h3><p class="card-detail">不能伪造一个可恢复状态</p></div><div class="stat-card" data-anim><div class="stat-big">4352</div><h3 class="card-title">修复后热命中</h3><p class="card-detail">该对冷、热 32-token 输出一致</p></div></div><p class="followup-line">追问：“这些是实际日志，还是按启动参数推测的？”</p><p class="small-note">A3 · DP16/TP1 · V1 eager · 无 MTP · DRAM · 对齐粒度仅针对该配置</p></div></section><section class="slide light" data-layout="H04" data-animate="prompt" id="slide-review-diff" aria-label="每个修改点的必要性"><div class="chrome"><div class="l"><span class="square"></span><span>1.4 审修改</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="slide-body"><div class="content-stack" data-anim><h2 class="h-xl">每个修改点的必要性</h2><p class="lead">自动 review 的建议也需要源码与接口依据</p></div><div class="grid-2" style="grid-template-columns:1.15fr 1fr"><div data-anim><pre class="prompt-block">按 diff 顺序，一次解释一个修改点。
+说清原行为、触发条件、不改的后果。
+标记：实测故障、接口契约、未验证假设。
+检查已有逻辑，删除等价改写与无关兜底。
+SDK 行为给版本与实现依据。</pre><p class="small-note" style="margin-top:1.5vh">复盘整理的指令模板</p></div><div class="prompt-side" data-anim><div><h3>Agent 应交付</h3><p>逐项评审表与可独立审阅的最小 diff</p></div><div><h3>人工检查</h3><p>正常路径会走到这里吗？是否只是为测试 mock 加了生产分支？</p></div></div></div><p class="followup-line" data-anim>“这个问题实际遇到过吗？已有条件是否覆盖了？”</p></div></section><section class="slide light" data-layout="H05" data-animate="three" id="slide-acceptance" aria-label="一份能检查的验收矩阵"><div class="chrome"><div class="l"><span class="square"></span><span>1.5 验结果</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="slide-body"><div class="content-stack" data-anim><h2 class="h-xl">一份能检查的验收矩阵</h2><p class="lead">要求 Agent 给出通过、失败和未验证项</p></div><div class="grid-3 same-size"><div class="card flat" data-anim><h3 class="card-title">缓存来源</h3><p class="card-body">冷写、外部热读，隔离 HBM 命中</p><p class="card-detail">失败重算不能算加载通过</p></div><div class="card flat" data-anim><h3 class="card-title">加载正确</h3><p class="card-body">状态与分片完整，冷热输出对照</p><p class="card-detail">确定性回归不等于完整准确率</p></div><div class="card flat" data-anim><h3 class="card-title">结论范围</h3><p class="card-body">代码、硬件、拓扑、模式与证据</p><p class="card-detail">A3/TP1 不覆盖 A5/TP4</p></div></div></div></section><section class="slide dark" data-layout="H11" data-animate="handoff" id="slide-handoff" aria-label="下一次任务的起点"><div class="chrome"><div class="l"><span class="square"></span><span>1.6 做交接</span></div><div></div></div><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="slide-body"><div class="content-stack" data-anim><h2 class="h-xl">下一次任务的起点</h2><p class="lead">让新会话和新同事都能接得上</p></div><ul class="handoff-list"><li data-anim>代码版本与未提交差异</li><li data-anim>启动、验证入口与配置</li><li data-anim>请求与原始证据索引</li><li data-anim>已否定假设、已知限制、未验证项</li></ul><p class="followup-line">交接当前可复现状态，不只交一个补丁</p></div></section><section class="slide hero light" data-layout="H03" data-animate="divider" id="slide-chapter-two" aria-label="性能调优"><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="section-layout"><div data-anim><div class="section-no">02</div><h2 class="h-xl" style="margin-top:3vh">性能调优</h2><p class="lead">预留章节，案例与讲解内容后续补充</p></div><div class="red-panel" data-anim><h3 class="h-md">以第一章的功能正确性与基线证据为起点</h3></div></div></section><section class="slide hero dark" data-layout="H10" data-animate="closing" id="slide-closing" aria-label="下次使用 Agent， 从一份任务回执开始"><div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span>HUAWEI</span></div><div class="closing-layout"><h2 class="h-hero" data-anim>下次使用 Agent，<br>从一份任务回执开始</h2><p class="lead" data-anim>交任务、看产物、做反证、审修改、验结果、做交接</p><p class="bottom-note">完整指令、案例资料与证据索引见专题网站</p><a class="website-link" href="https://zouyida2052.github.io/code-agent-kv-pooling/" target="_blank" rel="noopener noreferrer">https://zouyida2052.github.io/code-agent-kv-pooling/</a></div></section></main><nav id="nav" aria-label="逐页跳转"></nav><div id="controls"><button id="previous" type="button" aria-label="上一页">‹</button><button id="next" type="button" aria-label="下一页">›</button><button id="index-toggle" type="button">索引</button><button id="notes-toggle" type="button" aria-expanded="false">备注</button><button id="static-toggle" type="button" aria-pressed="false">静态</button><button id="screen-toggle" type="button">全屏</button></div><div id="overview" role="dialog" aria-label="幻灯片索引" aria-modal="true" aria-hidden="true" inert></div><aside id="speaker-panel" aria-label="讲者备注" hidden><button id="speaker-close" type="button">关闭</button><h2 id="note-title"></h2><p id="note-body"></p><div id="note-sources"></div></aside><noscript><div class="fallback">请启用 JavaScript 以横向翻页。全部页面文字已包含在本文件中。</div></noscript><script id="speaker-data" type="application/json">{"title": "Code Agent 辅助池化开发", "subtitle": "新模型适配的方法与人工检查点", "date": "2026-10-29", "chapter2": "性能调优（预留）", "slides": [{"id": "cover", "layout": "H01", "theme": "hero light", "type": "cover", "minutes": 0.5, "title": "Code Agent\n辅助池化开发", "lead": "新模型适配的方法与人工检查点", "detail": "第一章 模型适配 · GLM-5.3-Flash 案例", "notes": "今天分享的是怎样使用 Agent 完成新模型的池化开发。GLM-5.3-Flash 是贯穿讲解的练习材料，重点是如何给任务、检查它的理解、通过实验追问，以及审查它交回的代码。第一章参考时长二十分钟，第二章性能调优先保留入口。这里的模型案例特指 Flash，不把它与 GLM-5.3 的结构混用。", "sources": ["pool-pr"]}, {"id": "agenda", "layout": "H02", "theme": "light", "type": "agenda", "minutes": 0.5, "title": "专题安排", "lead": "先建立功能正确与证据闭环，再进入性能实验", "items": [{"number": "01", "title": "模型适配", "text": "怎样交任务、看产物、做反证、审修改、验结果、做交接", "status": "本次讲解"}, {"number": "02", "title": "性能调优", "text": "后续补充独立案例、实验方法与讲解内容", "status": "预留章节"}], "notes": "第一章分六个操作步骤，每一步都回答相同的问题：我应该怎样向 Agent 提要求，它应该交回什么，我该如何判断。模型结构和源码细节只在解释这些动作时出现。第二章暂不填入一组吞吐数据来凑内容，等性能调优的方法与案例准备好后，再作为独立章节加入。", "sources": []}, {"id": "chapter-one", "layout": "H03", "theme": "hero dark", "type": "divider", "minutes": 0.5, "number": "01", "title": "模型适配", "lead": "你指挥与检查，Agent 探索与执行", "statement": "每次给任务，都约定一个可检查的产物", "notes": "进入模型适配。使用 Agent 不意味着你要先知道所有故障，也不意味着它说通过就接受。人的主要工作是确定目标和资源边界，检查推理是否有证据，决定修改范围。Agent 则适合重复读源码、运行验证、比较结果与归档。下面从最初的任务描述开始讲。", "sources": []}, {"id": "working-loop", "layout": "H37", "theme": "light", "type": "loop", "minutes": 1.5, "title": "人和 Agent 的协作分工", "lead": "把连续执行交给 Agent，把关键判断留在人手里", "human": "目标、资源、验收标准与提交范围", "agent": ["读取上下文", "提出假设", "执行实验", "整理证据"], "review": ["理解是否正确", "归因是否成立", "修改是否必要"], "gate": "高影响改动、证据冲突、结论扩大时介入", "notes": "先把人机协作方式讲清。人不需要审批每条只读命令，但要让 Agent 知道任务完成标准和资源边界。Agent 连续搜索、实验和记录，遇到需要改变架构、停止无关服务或者把某个局部结果扩大为整体通过时，人再介入判断。一个常见错误是把目标、执行和验收都压成一句“帮我适配”。另一种错误是每一步都盯着命令，却没有定义最后要看什么证据。我们要建立的是连续执行与阶段检查之间的配合。", "sources": ["summary"]}, {"id": "task-brief", "layout": "H04", "theme": "light", "type": "prompt", "minutes": 2.5, "step": "1.1 交任务", "title": "一份可执行的适配任务", "lead": "用目标、约束和验收定义，代替一句“帮我支持池化”", "prompt": "为 \u003c模型> 适配 \u003c池化场景>。\n先核对代码、SDK、权重与拓扑。\n先给缓存布局表和验证顺序。\n验收包括冷写、外部热读与输出对照。\n无关模型修复独立记录。", "expect": "任务回执：实际版本、资源范围、验证顺序、通过条件", "check": "有没有说明怎样区分 HBM 命中与外部池加载？", "followup": "“先列出每项验收的观察量与证据位置。”", "notes": "展示这段复盘整理的任务模板。首先给明确目标，例如 non-layerwise 或 layerwise，以及 DRAM 或 SSD 的范围。接着固定真实代码和环境，不让它把过去的会话总结当成当前机器状态。资源限制要写清，例如不得借用其他服务的卡。最后明确什么算通过：热请求的 HTTP 成功不等于外部缓存加载成功。交完任务以后，让 Agent 复述它理解的范围与验证顺序。你要收到的是可检查的任务回执，而不只是启动脚本。如果它遗漏某一阶段，就在这里纠正，比让它写完一大堆代码再返工成本低。完整模板在专题网站与讲解备注中。", "sources": ["summary"]}, {"id": "context-pack", "layout": "H05", "theme": "dark", "type": "three", "minutes": 1.5, "step": "1.1 上下文准备", "title": "Agent 需要的上下文", "lead": "给入口与事实，让它读取原始材料", "blocks": [{"title": "代码入口", "text": "仓库、固定提交、相关符号、已有 PR", "detail": "避免从文件名或模型名猜实现"}, {"title": "执行条件", "text": "拓扑、SDK、runner、图模式、可用资源", "detail": "要求报告实际环境而非计划环境"}, {"title": "验证入口", "text": "已有 Skill、脚本、最近结果与原始日志", "detail": "优先复用，记录适用范围"}], "notes": "上下文不是越多越好。把仓库和报告作为可读取的入口，通常比把整份日志粘进聊天更有效。代码上下文要有版本，环境上下文要有实际值，验证上下文要有现成脚本。如果有池化、部署或正确性验证 Skill，就要求 Agent 先阅读并解释是否适用。对于已有结论，要让它回到原始请求和日志，而不是引用自己上一轮的总结。新会话接手时，这个最小上下文包也能防止重复踩坑。", "sources": []}, {"id": "understanding", "layout": "H04", "theme": "light", "type": "prompt", "minutes": 2, "step": "1.2 看产物", "title": "修改前先检查它的理解", "lead": "要求布局表与调用链，再用具体例子追问", "prompt": "先只读，不改代码。\n追踪配置、缓存 spec、张量视图与 connector。\n列出 shape、dtype、stride 与 TP 分片。\n解释谁保存、key 怎么命名、命中检查查哪些 key。\n每项给源码位置，标明未知项。", "expect": "带源码来源的缓存布局表与存取调用链", "check": "TP4 时 MLA 副本与 KDA 状态分片，是否被混为一谈？", "followup": "“给我一个 rank 0 到 3 的具体 key 示例。”", "notes": "这里不是让大家先听完一节模型结构课，而是教如何检查 Agent 的产物。GLM-5.3-Flash 有 KDA 递归状态和 sparse MLA，两者的保存语义不同。你可以要求它给 TP4 例子：各 rank 保存什么、池 key 怎样区分、少一个分片会怎样。对于 MLA 的重复副本，一份可能足够；KDA 独立分片就不能按同一规则去重。如果它提到 tail，要追问这是模型结构还是缓存实现中的局部状态。听不懂时，要求一次只解释一个修改点，并指出构造实际张量的代码，不接受仅靠 attention 名称推导的结论。", "sources": ["pool-code"]}, {"id": "falsification", "layout": "H11", "theme": "hero dark", "type": "quote", "minutes": 1.5, "title": "对 Agent 的一次关键追问", "quote": "什么实验，\n能推翻你现在的判断？", "lead": "一次只改变一个变量，先看真实观察，再决定下一步修改", "notes": "这句话是本章的关键追问模板。Agent 容易围绕最初的归因不断补代码，尤其是同时涉及模型、池化和 SDK 的问题。让它设计能推翻自己判断的实验，会把对话从“继续修”转回假设与证据。不是要求每个问题都做很大的 A/B 测试，而是找到成本最低的对照，尽量保持其余条件一致。下面用输出异常和缓存不命中两个真实案例说明。", "sources": ["summary"]}, {"id": "no-pool-control", "layout": "H26", "theme": "light", "type": "compare", "minutes": 2, "step": "1.3 做反证", "title": "输出异常的对照实验", "lead": "只去掉 connector，其余配置保持一致", "left": {"title": "当前假设", "text": "异常输出来自外部缓存加载", "detail": "带池化的请求出现异常文本"}, "right": {"title": "实际对照", "text": "关闭池化后，异常仍存在", "detail": "Agent 应先检查基础模型路径"}, "conclusion": "能够否定“症状必须依赖外部加载”；不能推出“池化已经正确”", "notes": "2026 年 10 月 5 日的对照只移除 KV connector 启动参数，保留候选代码与其他条件。异常输出仍然出现，说明外部加载不是这个症状的必要条件。后续叠加 #17828 修复 packed 卷积状态的合法 row 0 被当成空状态的问题，再做数值与生成验证。这里教的动作是如何要求 Agent 停止错误归因：问它哪个变量改变、观察是什么、能排除什么。注意结论边界，关闭池化仍异常，不代表池化实现无其他问题；相同请求输出恢复正常，也不等于完整数据集准确率已通过。", "sources": ["conv-pr", "summary"]}, {"id": "checkpoint-evidence", "layout": "H07", "theme": "dark", "type": "checkpoint", "minutes": 2, "step": "1.3 看运行事实", "title": "8705 请求的真实检查点", "lead": "让 Agent 交出实际 chunk、mask 和 block IDs", "stats": [{"value": "4352", "label": "第一步实际终点", "detail": "有有效状态，原 mask 为 False"}, {"value": "0", "label": "8704 对应 null 槽", "detail": "不能伪造一个可恢复状态"}, {"value": "4352", "label": "修复后热命中", "detail": "该对冷、热 32-token 输出一致"}], "conclusion": "追问：“这些是实际日志，还是按启动参数推测的？”", "notes": "这里只讲清使用 Agent 的方法，不逐行推导保存 mask。实际请求不是按 max-num-batched-tokens 想象的 8192 加 513，而是 4352 加 4353。第一步有有效的 4352 检查点，但被过滤；下一步到 8705，8704 的对应槽为空。要求 Agent 同时给实际计算终点、保存终点、各 group mask 与 block IDs，才能知道最小修复应该保存早期真实的 4352 状态。不要为了看起来更高的命中量保存空槽。此次 A3、DP16/TP1、V1 eager、无 MTP 的 DRAM 回归中，8705 热请求命中 4352，冷热各生成 32 token 且一致。这个结果不扩展到 SSD 或完整准确率。", "sources": ["pool-code", "summary"]}, {"id": "review-diff", "layout": "H04", "theme": "light", "type": "prompt", "minutes": 2, "step": "1.4 审修改", "title": "每个修改点的必要性", "lead": "自动 review 的建议也需要源码与接口依据", "prompt": "按 diff 顺序，一次解释一个修改点。\n说清原行为、触发条件、不改的后果。\n标记：实测故障、接口契约、未验证假设。\n检查已有逻辑，删除等价改写与无关兜底。\nSDK 行为给版本与实现依据。", "expect": "逐项评审表与可独立审阅的最小 diff", "check": "正常路径会走到这里吗？是否只是为测试 mock 加了生产分支？", "followup": "“这个问题实际遇到过吗？已有条件是否覆盖了？”", "notes": "让听众看这里的追问方式，而不是记住某条保护应该永远删掉。我们在评审中回退了没有正常场景依据的零值 clamp、映射缺失时沿用原层号的兜底，以及等价改写。为裸 mock 跳过真实等待的问题通过改测试 fixture 处理，保留真实同步需要。另一个教训是 SSD 的接口解释：早期“只有 Get 才能回读”的断言后来被默认查询包含原生预取的证据修正。人要要求 Agent 给 SDK 版本、实现和事件链。防御分支并不一定都要真机撞过，但必须有可达路径或接口契约，不能只说“更稳健”。", "sources": ["pool-pr", "summary"]}, {"id": "acceptance", "layout": "H05", "theme": "light", "type": "three", "minutes": 1.5, "step": "1.5 验结果", "title": "一份能检查的验收矩阵", "lead": "要求 Agent 给出通过、失败和未验证项", "blocks": [{"title": "缓存来源", "text": "冷写、外部热读，隔离 HBM 命中", "detail": "失败重算不能算加载通过"}, {"title": "加载正确", "text": "状态与分片完整，冷热输出对照", "detail": "确定性回归不等于完整准确率"}, {"title": "结论范围", "text": "代码、硬件、拓扑、模式与证据", "detail": "A3/TP1 不覆盖 A5/TP4"}], "notes": "验收时不要只收一条“全部通过”。让 Agent 提供矩阵，每项列出实际版本和配置、请求、观察量、结果与原始证据位置。先确认外部加载真的发生，再看加载和输出是否正确。SSD 需要关联同 key 的读取、DRAM 回迁和成功模型请求，不能只看注册容量或累计命中。历史 A5 和后续 A3 的结果分别写明，不把不同阶段拼成一个当前版本全覆盖结论。性能实验在第二章另讲，不能用吞吐倍率反推正确性。", "sources": ["summary"]}, {"id": "handoff", "layout": "H11", "theme": "dark", "type": "handoff", "minutes": 1, "step": "1.6 做交接", "title": "下一次任务的起点", "lead": "让新会话和新同事都能接得上", "items": ["代码版本与未提交差异", "启动、验证入口与配置", "请求与原始证据索引", "已否定假设、已知限制、未验证项"], "statement": "交接当前可复现状态，不只交一个补丁", "notes": "任务结束前要求 Agent 把会话历史压缩成可操作交接。下一个人应该知道当前实际运行什么、哪些通过、哪些没测、怎样再次验证。代码和结果都要带版本，过去的“服务仍运行”不能当成今天的状态。把有效的任务描述和追问整理成模板，把被否定的假设也留住，避免下一次又从同一个错误归因开始。", "sources": []}, {"id": "chapter-two", "layout": "H03", "theme": "hero light", "type": "divider", "minutes": 0, "number": "02", "title": "性能调优", "lead": "预留章节，案例与讲解内容后续补充", "statement": "以第一章的功能正确性与基线证据为起点", "notes": "这里保留第二章的位置，暂不计入讲解时长。后续再展开如何指挥 Agent 建立性能基线、定位瓶颈、设计受控实验并判断收益。当前讲稿不提前用某个单次倍率来代替这部分方法。", "sources": []}, {"id": "closing", "layout": "H10", "theme": "hero dark", "type": "closing", "minutes": 1, "title": "下次使用 Agent，\n从一份任务回执开始", "lead": "交任务、看产物、做反证、审修改、验结果、做交接", "detail": "完整指令、案例资料与证据索引见专题网站", "notes": "最后请听众带走一个马上可以做的动作：下次把“帮我适配”交给 Agent 后，先让它返回目标、边界、验证顺序和证据格式。随后每个阶段检查一个具体产物，而不是只看它做了多少工作。我们没有量化 AI 节省的人天；这份分享提供的是可重复使用的方法。完整模板、案例细节和来源在专题网站。接下来可以围绕如何写任务、如何追问或怎样验收进行交流。", "sources": ["pool-pr"]}], "sources": {"pool-pr": {"label": "#17698 · 已合入的 layerwise 适配", "url": "https://github.com/vllm-project/vllm-ascend/pull/17698", "detail": "2026-10-06 合入；合入提交 56df3aa38deabbf802f2a018914706e6dd64a8f1。用于历史复盘，不代表当前主线仍有相同实现。"}, "conv-pr": {"label": "#17828 · packed 卷积状态修复", "url": "https://github.com/vllm-project/vllm-ascend/pull/17828", "detail": "2026-10-06 合入；合入提交 7a058273d7728ffac2021f5559d8f576ea73afc2。合法 packed row 0 与 null slot 的区别。"}, "pool-code": {"label": "固定提交 · pool_worker.py", "url": "https://github.com/vllm-project/vllm-ascend/blob/56df3aa38deabbf802f2a018914706e6dd64a8f1/vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py", "detail": "以合入时快照解释 group、rank、保存 mask 和异步收尾。"}, "kda-code": {"label": "固定提交 · KDA 回调", "url": "https://github.com/vllm-project/vllm-ascend/blob/56df3aa38deabbf802f2a018914706e6dd64a8f1/vllm_ascend/models/glm5next/kda.py", "detail": "返回路径中的 layerwise 保存通知与实际张量传输是不同职责。"}, "api-pr": {"label": "vLLM #47782 · 边界接口变化", "url": "https://github.com/vllm-project/vllm/pull/47782", "detail": "num_prompt_tokens 改为 reachable_boundaries；不将后端适配遗漏归因为上游已证实缺陷。"}, "summary": {"label": "脱敏实测摘录与证据索引", "url": "https://zouyida2052.github.io/code-agent-kv-pooling/evidence/validated-results.json", "detail": "仅保留必要结果、版本条件和来源文件校验值；原始内部日志未公开。"}}}</script><script>/* AGPL-3.0. Corresponding source: repository /talk and export_talk.py. */
+(() => {
+  'use strict';
+  const data = JSON.parse(document.getElementById('speaker-data').textContent);
+  const slides = [...document.querySelectorAll('#deck > .slide')];
+  const deck = document.getElementById('deck');
+  const nav = document.getElementById('nav');
+  const overview = document.getElementById('overview');
+  const panel = document.getElementById('speaker-panel');
+  const prev = document.getElementById('previous');
+  const next = document.getElementById('next');
+  let current = 0, wheelLocked = false, touch = null;
+  function stored() { try { return localStorage.getItem('agent-talk-static') === '1'; } catch { return false; } }
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  document.body.classList.toggle('low-power', stored() || reduced);
+  function indexFromHash() {
+    const id = location.hash.slice(1);
+    const i = data.slides.findIndex(s => s.id === id);
+    return i < 0 ? 0 : i;
+  }
+  function notes() {
+    const s = data.slides[current];
+    document.getElementById('note-title').textContent = `${current + 1}. ${s.title.replaceAll('\n', ' ')} · ${s.minutes} 分钟`;
+    document.getElementById('note-body').textContent = s.notes;
+    const links = document.getElementById('note-sources');
+    links.replaceChildren();
+    s.sources.forEach(id => {
+      const source = data.sources[id], a = document.createElement('a');
+      a.href = source.url; a.textContent = source.label; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      links.appendChild(a);
+    });
+  }
+  function go(i, hash = true) {
+    current = Math.max(0, Math.min(i, slides.length - 1));
+    deck.style.transform = `translateX(${-current * 100}vw)`;
+    slides.forEach((s, n) => {
+      s.classList.toggle('active', n === current);
+      s.setAttribute('aria-hidden', String(n !== current));
+      s.inert = n !== current;
+    });
+    [...nav.children].forEach((b, n) => {
+      b.classList.toggle('active', n === current);
+      b.setAttribute('aria-current', n === current ? 'step' : 'false');
+    });
+    document.body.classList.toggle('dark-bg', slides[current].classList.contains('dark'));
+    prev.disabled = current === 0; next.disabled = current === slides.length - 1;
+    document.title = `${current + 1} / ${slides.length} · ${data.slides[current].title.replaceAll('\n', ' ')}`;
+    if (hash) { try { history.replaceState(null, '', '#' + data.slides[current].id); } catch { location.hash = data.slides[current].id; } }
+    notes();
+  }
+  function toggleOverview() {
+    const show = !document.body.classList.contains('overview');
+    panel.hidden = true;
+    document.body.classList.toggle('overview', show);
+    overview.setAttribute('aria-hidden', String(!show)); overview.inert = !show;
+    overview.querySelectorAll('.thumb').forEach((b, i) => b.classList.toggle('active', i === current));
+    if (show) overview.querySelectorAll('.thumb')[current].focus();
+    else document.getElementById('index-toggle').focus();
+  }
+  function toggleNotes() { panel.hidden = !panel.hidden; document.getElementById('notes-toggle').setAttribute('aria-expanded', String(!panel.hidden)); }
+  function toggleStatic() {
+    const on = document.body.classList.toggle('low-power');
+    try { localStorage.setItem('agent-talk-static', on ? '1' : '0'); } catch {}
+    document.getElementById('static-toggle').setAttribute('aria-pressed', String(on));
+  }
+  async function fullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch { document.getElementById('screen-toggle').textContent = '使用浏览器全屏'; }
+  }
+  data.slides.forEach((s, i) => {
+    const number = document.createElement('span'); number.className = 'page-no';
+    number.textContent = `${String(i + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+    slides[i].appendChild(number);
+    const dot = document.createElement('button'); dot.type = 'button';
+    dot.setAttribute('aria-label', `第 ${i + 1} 页：${s.title.replaceAll('\n', ' ')}`);
+    dot.addEventListener('click', () => go(i)); nav.appendChild(dot);
+    const thumb = document.createElement('button'); thumb.type = 'button'; thumb.className = 'thumb';
+    const index = document.createElement('small'); index.textContent = `${String(i + 1).padStart(2, '0')} / ${s.minutes} MIN`;
+    const title = document.createElement('span'); title.textContent = s.title.replaceAll('\n', ' ');
+    thumb.append(index, title);
+    thumb.addEventListener('click', () => { toggleOverview(); go(i); }); overview.appendChild(thumb);
+  });
+  prev.addEventListener('click', () => go(current - 1)); next.addEventListener('click', () => go(current + 1));
+  document.getElementById('index-toggle').addEventListener('click', toggleOverview);
+  document.getElementById('notes-toggle').addEventListener('click', toggleNotes);
+  document.getElementById('speaker-close').addEventListener('click', toggleNotes);
+  document.getElementById('static-toggle').addEventListener('click', toggleStatic);
+  document.getElementById('screen-toggle').addEventListener('click', fullscreen);
+  document.getElementById('static-toggle').setAttribute('aria-pressed', String(document.body.classList.contains('low-power')));
+  addEventListener('hashchange', () => go(indexFromHash(), false));
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable) return;
+    if (e.key === 'Escape') { e.preventDefault(); if (!panel.hidden) { toggleNotes(); } else toggleOverview(); return; }
+    if (e.key.toLowerCase() === 'n') { e.preventDefault(); if (!document.body.classList.contains('overview')) toggleNotes(); return; }
+    if (e.key.toLowerCase() === 'b') { e.preventDefault(); toggleStatic(); return; }
+    if (e.key.toLowerCase() === 'f') { e.preventDefault(); fullscreen(); return; }
+    if (document.body.classList.contains('overview') || !panel.hidden) return;
+    if (['ArrowRight', 'PageDown'].includes(e.key) || (e.key === ' ' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A')) { e.preventDefault(); go(current + 1); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); go(current - 1); }
+    if (e.key === 'Home') { e.preventDefault(); go(0); }
+    if (e.key === 'End') { e.preventDefault(); go(slides.length - 1); }
+  });
+  addEventListener('wheel', e => {
+    if (e.ctrlKey || wheelLocked || document.body.classList.contains('overview') || !panel.hidden || innerHeight > innerWidth || Math.abs(e.deltaY) < 24) return;
+    e.preventDefault(); wheelLocked = true; go(current + (e.deltaY > 0 ? 1 : -1));
+    setTimeout(() => { wheelLocked = false; }, 620);
+  }, {passive: false});
+  addEventListener('touchstart', e => {
+    if (!panel.hidden || document.body.classList.contains('overview')) return;
+    touch = {x: e.touches[0]?.clientX, y: e.touches[0]?.clientY};
+  }, {passive: true});
+  addEventListener('touchend', e => {
+    if (!touch) return;
+    const t = e.changedTouches[0], dx = (t?.clientX ?? touch.x) - touch.x, dy = (t?.clientY ?? touch.y) - touch.y;
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.3) go(current + (dx < 0 ? 1 : -1));
+    touch = null;
+  }, {passive: true});
+  go(indexFromHash(), false);
+})();
+</script><script id="license" type="text/plain">                    GNU AFFERO GENERAL PUBLIC LICENSE
+                       Version 3, 19 November 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+                            Preamble
+
+  The GNU Affero General Public License is a free, copyleft license for
+software and other kinds of works, specifically designed to ensure
+cooperation with the community in the case of network server software.
+
+  The licenses for most software and other practical works are designed
+to take away your freedom to share and change the works.  By contrast,
+our General Public Licenses are intended to guarantee your freedom to
+share and change all versions of a program--to make sure it remains free
+software for all its users.
+
+  When we speak of free software, we are referring to freedom, not
+price.  Our General Public Licenses are designed to make sure that you
+have the freedom to distribute copies of free software (and charge for
+them if you wish), that you receive source code or can get it if you
+want it, that you can change the software or use pieces of it in new
+free programs, and that you know you can do these things.
+
+  Developers that use our General Public Licenses protect your rights
+with two steps: (1) assert copyright on the software, and (2) offer
+you this License which gives you legal permission to copy, distribute
+and/or modify the software.
+
+  A secondary benefit of defending all users' freedom is that
+improvements made in alternate versions of the program, if they
+receive widespread use, become available for other developers to
+incorporate.  Many developers of free software are heartened and
+encouraged by the resulting cooperation.  However, in the case of
+software used on network servers, this result may fail to come about.
+The GNU General Public License permits making a modified version and
+letting the public access it on a server without ever releasing its
+source code to the public.
+
+  The GNU Affero General Public License is designed specifically to
+ensure that, in such cases, the modified source code becomes available
+to the community.  It requires the operator of a network server to
+provide the source code of the modified version running there to the
+users of that server.  Therefore, public use of a modified version, on
+a publicly accessible server, gives the public access to the source
+code of the modified version.
+
+  An older license, called the Affero General Public License and
+published by Affero, was designed to accomplish similar goals.  This is
+a different license, not a version of the Affero GPL, but Affero has
+released a new version of the Affero GPL which permits relicensing under
+this license.
+
+  The precise terms and conditions for copying, distribution and
+modification follow.
+
+                       TERMS AND CONDITIONS
+
+  0. Definitions.
+
+  "This License" refers to version 3 of the GNU Affero General Public License.
+
+  "Copyright" also means copyright-like laws that apply to other kinds of
+works, such as semiconductor masks.
+
+  "The Program" refers to any copyrightable work licensed under this
+License.  Each licensee is addressed as "you".  "Licensees" and
+"recipients" may be individuals or organizations.
+
+  To "modify" a work means to copy from or adapt all or part of the work
+in a fashion requiring copyright permission, other than the making of an
+exact copy.  The resulting work is called a "modified version" of the
+earlier work or a work "based on" the earlier work.
+
+  A "covered work" means either the unmodified Program or a work based
+on the Program.
+
+  To "propagate" a work means to do anything with it that, without
+permission, would make you directly or secondarily liable for
+infringement under applicable copyright law, except executing it on a
+computer or modifying a private copy.  Propagation includes copying,
+distribution (with or without modification), making available to the
+public, and in some countries other activities as well.
+
+  To "convey" a work means any kind of propagation that enables other
+parties to make or receive copies.  Mere interaction with a user through
+a computer network, with no transfer of a copy, is not conveying.
+
+  An interactive user interface displays "Appropriate Legal Notices"
+to the extent that it includes a convenient and prominently visible
+feature that (1) displays an appropriate copyright notice, and (2)
+tells the user that there is no warranty for the work (except to the
+extent that warranties are provided), that licensees may convey the
+work under this License, and how to view a copy of this License.  If
+the interface presents a list of user commands or options, such as a
+menu, a prominent item in the list meets this criterion.
+
+  1. Source Code.
+
+  The "source code" for a work means the preferred form of the work
+for making modifications to it.  "Object code" means any non-source
+form of a work.
+
+  A "Standard Interface" means an interface that either is an official
+standard defined by a recognized standards body, or, in the case of
+interfaces specified for a particular programming language, one that
+is widely used among developers working in that language.
+
+  The "System Libraries" of an executable work include anything, other
+than the work as a whole, that (a) is included in the normal form of
+packaging a Major Component, but which is not part of that Major
+Component, and (b) serves only to enable use of the work with that
+Major Component, or to implement a Standard Interface for which an
+implementation is available to the public in source code form.  A
+"Major Component", in this context, means a major essential component
+(kernel, window system, and so on) of the specific operating system
+(if any) on which the executable work runs, or a compiler used to
+produce the work, or an object code interpreter used to run it.
+
+  The "Corresponding Source" for a work in object code form means all
+the source code needed to generate, install, and (for an executable
+work) run the object code and to modify the work, including scripts to
+control those activities.  However, it does not include the work's
+System Libraries, or general-purpose tools or generally available free
+programs which are used unmodified in performing those activities but
+which are not part of the work.  For example, Corresponding Source
+includes interface definition files associated with source files for
+the work, and the source code for shared libraries and dynamically
+linked subprograms that the work is specifically designed to require,
+such as by intimate data communication or control flow between those
+subprograms and other parts of the work.
+
+  The Corresponding Source need not include anything that users
+can regenerate automatically from other parts of the Corresponding
+Source.
+
+  The Corresponding Source for a work in source code form is that
+same work.
+
+  2. Basic Permissions.
+
+  All rights granted under this License are granted for the term of
+copyright on the Program, and are irrevocable provided the stated
+conditions are met.  This License explicitly affirms your unlimited
+permission to run the unmodified Program.  The output from running a
+covered work is covered by this License only if the output, given its
+content, constitutes a covered work.  This License acknowledges your
+rights of fair use or other equivalent, as provided by copyright law.
+
+  You may make, run and propagate covered works that you do not
+convey, without conditions so long as your license otherwise remains
+in force.  You may convey covered works to others for the sole purpose
+of having them make modifications exclusively for you, or provide you
+with facilities for running those works, provided that you comply with
+the terms of this License in conveying all material for which you do
+not control copyright.  Those thus making or running the covered works
+for you must do so exclusively on your behalf, under your direction
+and control, on terms that prohibit them from making any copies of
+your copyrighted material outside their relationship with you.
+
+  Conveying under any other circumstances is permitted solely under
+the conditions stated below.  Sublicensing is not allowed; section 10
+makes it unnecessary.
+
+  3. Protecting Users' Legal Rights From Anti-Circumvention Law.
+
+  No covered work shall be deemed part of an effective technological
+measure under any applicable law fulfilling obligations under article
+11 of the WIPO copyright treaty adopted on 20 December 1996, or
+similar laws prohibiting or restricting circumvention of such
+measures.
+
+  When you convey a covered work, you waive any legal power to forbid
+circumvention of technological measures to the extent such circumvention
+is effected by exercising rights under this License with respect to
+the covered work, and you disclaim any intention to limit operation or
+modification of the work as a means of enforcing, against the work's
+users, your or third parties' legal rights to forbid circumvention of
+technological measures.
+
+  4. Conveying Verbatim Copies.
+
+  You may convey verbatim copies of the Program's source code as you
+receive it, in any medium, provided that you conspicuously and
+appropriately publish on each copy an appropriate copyright notice;
+keep intact all notices stating that this License and any
+non-permissive terms added in accord with section 7 apply to the code;
+keep intact all notices of the absence of any warranty; and give all
+recipients a copy of this License along with the Program.
+
+  You may charge any price or no price for each copy that you convey,
+and you may offer support or warranty protection for a fee.
+
+  5. Conveying Modified Source Versions.
+
+  You may convey a work based on the Program, or the modifications to
+produce it from the Program, in the form of source code under the
+terms of section 4, provided that you also meet all of these conditions:
+
+    a) The work must carry prominent notices stating that you modified
+    it, and giving a relevant date.
+
+    b) The work must carry prominent notices stating that it is
+    released under this License and any conditions added under section
+    7.  This requirement modifies the requirement in section 4 to
+    "keep intact all notices".
+
+    c) You must license the entire work, as a whole, under this
+    License to anyone who comes into possession of a copy.  This
+    License will therefore apply, along with any applicable section 7
+    additional terms, to the whole of the work, and all its parts,
+    regardless of how they are packaged.  This License gives no
+    permission to license the work in any other way, but it does not
+    invalidate such permission if you have separately received it.
+
+    d) If the work has interactive user interfaces, each must display
+    Appropriate Legal Notices; however, if the Program has interactive
+    interfaces that do not display Appropriate Legal Notices, your
+    work need not make them do so.
+
+  A compilation of a covered work with other separate and independent
+works, which are not by their nature extensions of the covered work,
+and which are not combined with it such as to form a larger program,
+in or on a volume of a storage or distribution medium, is called an
+"aggregate" if the compilation and its resulting copyright are not
+used to limit the access or legal rights of the compilation's users
+beyond what the individual works permit.  Inclusion of a covered work
+in an aggregate does not cause this License to apply to the other
+parts of the aggregate.
+
+  6. Conveying Non-Source Forms.
+
+  You may convey a covered work in object code form under the terms
+of sections 4 and 5, provided that you also convey the
+machine-readable Corresponding Source under the terms of this License,
+in one of these ways:
+
+    a) Convey the object code in, or embodied in, a physical product
+    (including a physical distribution medium), accompanied by the
+    Corresponding Source fixed on a durable physical medium
+    customarily used for software interchange.
+
+    b) Convey the object code in, or embodied in, a physical product
+    (including a physical distribution medium), accompanied by a
+    written offer, valid for at least three years and valid for as
+    long as you offer spare parts or customer support for that product
+    model, to give anyone who possesses the object code either (1) a
+    copy of the Corresponding Source for all the software in the
+    product that is covered by this License, on a durable physical
+    medium customarily used for software interchange, for a price no
+    more than your reasonable cost of physically performing this
+    conveying of source, or (2) access to copy the
+    Corresponding Source from a network server at no charge.
+
+    c) Convey individual copies of the object code with a copy of the
+    written offer to provide the Corresponding Source.  This
+    alternative is allowed only occasionally and noncommercially, and
+    only if you received the object code with such an offer, in accord
+    with subsection 6b.
+
+    d) Convey the object code by offering access from a designated
+    place (gratis or for a charge), and offer equivalent access to the
+    Corresponding Source in the same way through the same place at no
+    further charge.  You need not require recipients to copy the
+    Corresponding Source along with the object code.  If the place to
+    copy the object code is a network server, the Corresponding Source
+    may be on a different server (operated by you or a third party)
+    that supports equivalent copying facilities, provided you maintain
+    clear directions next to the object code saying where to find the
+    Corresponding Source.  Regardless of what server hosts the
+    Corresponding Source, you remain obligated to ensure that it is
+    available for as long as needed to satisfy these requirements.
+
+    e) Convey the object code using peer-to-peer transmission, provided
+    you inform other peers where the object code and Corresponding
+    Source of the work are being offered to the general public at no
+    charge under subsection 6d.
+
+  A separable portion of the object code, whose source code is excluded
+from the Corresponding Source as a System Library, need not be
+included in conveying the object code work.
+
+  A "User Product" is either (1) a "consumer product", which means any
+tangible personal property which is normally used for personal, family,
+or household purposes, or (2) anything designed or sold for incorporation
+into a dwelling.  In determining whether a product is a consumer product,
+doubtful cases shall be resolved in favor of coverage.  For a particular
+product received by a particular user, "normally used" refers to a
+typical or common use of that class of product, regardless of the status
+of the particular user or of the way in which the particular user
+actually uses, or expects or is expected to use, the product.  A product
+is a consumer product regardless of whether the product has substantial
+commercial, industrial or non-consumer uses, unless such uses represent
+the only significant mode of use of the product.
+
+  "Installation Information" for a User Product means any methods,
+procedures, authorization keys, or other information required to install
+and execute modified versions of a covered work in that User Product from
+a modified version of its Corresponding Source.  The information must
+suffice to ensure that the continued functioning of the modified object
+code is in no case prevented or interfered with solely because
+modification has been made.
+
+  If you convey an object code work under this section in, or with, or
+specifically for use in, a User Product, and the conveying occurs as
+part of a transaction in which the right of possession and use of the
+User Product is transferred to the recipient in perpetuity or for a
+fixed term (regardless of how the transaction is characterized), the
+Corresponding Source conveyed under this section must be accompanied
+by the Installation Information.  But this requirement does not apply
+if neither you nor any third party retains the ability to install
+modified object code on the User Product (for example, the work has
+been installed in ROM).
+
+  The requirement to provide Installation Information does not include a
+requirement to continue to provide support service, warranty, or updates
+for a work that has been modified or installed by the recipient, or for
+the User Product in which it has been modified or installed.  Access to a
+network may be denied when the modification itself materially and
+adversely affects the operation of the network or violates the rules and
+protocols for communication across the network.
+
+  Corresponding Source conveyed, and Installation Information provided,
+in accord with this section must be in a format that is publicly
+documented (and with an implementation available to the public in
+source code form), and must require no special password or key for
+unpacking, reading or copying.
+
+  7. Additional Terms.
+
+  "Additional permissions" are terms that supplement the terms of this
+License by making exceptions from one or more of its conditions.
+Additional permissions that are applicable to the entire Program shall
+be treated as though they were included in this License, to the extent
+that they are valid under applicable law.  If additional permissions
+apply only to part of the Program, that part may be used separately
+under those permissions, but the entire Program remains governed by
+this License without regard to the additional permissions.
+
+  When you convey a copy of a covered work, you may at your option
+remove any additional permissions from that copy, or from any part of
+it.  (Additional permissions may be written to require their own
+removal in certain cases when you modify the work.)  You may place
+additional permissions on material, added by you to a covered work,
+for which you have or can give appropriate copyright permission.
+
+  Notwithstanding any other provision of this License, for material you
+add to a covered work, you may (if authorized by the copyright holders of
+that material) supplement the terms of this License with terms:
+
+    a) Disclaiming warranty or limiting liability differently from the
+    terms of sections 15 and 16 of this License; or
+
+    b) Requiring preservation of specified reasonable legal notices or
+    author attributions in that material or in the Appropriate Legal
+    Notices displayed by works containing it; or
+
+    c) Prohibiting misrepresentation of the origin of that material, or
+    requiring that modified versions of such material be marked in
+    reasonable ways as different from the original version; or
+
+    d) Limiting the use for publicity purposes of names of licensors or
+    authors of the material; or
+
+    e) Declining to grant rights under trademark law for use of some
+    trade names, trademarks, or service marks; or
+
+    f) Requiring indemnification of licensors and authors of that
+    material by anyone who conveys the material (or modified versions of
+    it) with contractual assumptions of liability to the recipient, for
+    any liability that these contractual assumptions directly impose on
+    those licensors and authors.
+
+  All other non-permissive additional terms are considered "further
+restrictions" within the meaning of section 10.  If the Program as you
+received it, or any part of it, contains a notice stating that it is
+governed by this License along with a term that is a further
+restriction, you may remove that term.  If a license document contains
+a further restriction but permits relicensing or conveying under this
+License, you may add to a covered work material governed by the terms
+of that license document, provided that the further restriction does
+not survive such relicensing or conveying.
+
+  If you add terms to a covered work in accord with this section, you
+must place, in the relevant source files, a statement of the
+additional terms that apply to those files, or a notice indicating
+where to find the applicable terms.
+
+  Additional terms, permissive or non-permissive, may be stated in the
+form of a separately written license, or stated as exceptions;
+the above requirements apply either way.
+
+  8. Termination.
+
+  You may not propagate or modify a covered work except as expressly
+provided under this License.  Any attempt otherwise to propagate or
+modify it is void, and will automatically terminate your rights under
+this License (including any patent licenses granted under the third
+paragraph of section 11).
+
+  However, if you cease all violation of this License, then your
+license from a particular copyright holder is reinstated (a)
+provisionally, unless and until the copyright holder explicitly and
+finally terminates your license, and (b) permanently, if the copyright
+holder fails to notify you of the violation by some reasonable means
+prior to 60 days after the cessation.
+
+  Moreover, your license from a particular copyright holder is
+reinstated permanently if the copyright holder notifies you of the
+violation by some reasonable means, this is the first time you have
+received notice of violation of this License (for any work) from that
+copyright holder, and you cure the violation prior to 30 days after
+your receipt of the notice.
+
+  Termination of your rights under this section does not terminate the
+licenses of parties who have received copies or rights from you under
+this License.  If your rights have been terminated and not permanently
+reinstated, you do not qualify to receive new licenses for the same
+material under section 10.
+
+  9. Acceptance Not Required for Having Copies.
+
+  You are not required to accept this License in order to receive or
+run a copy of the Program.  Ancillary propagation of a covered work
+occurring solely as a consequence of using peer-to-peer transmission
+to receive a copy likewise does not require acceptance.  However,
+nothing other than this License grants you permission to propagate or
+modify any covered work.  These actions infringe copyright if you do
+not accept this License.  Therefore, by modifying or propagating a
+covered work, you indicate your acceptance of this License to do so.
+
+  10. Automatic Licensing of Downstream Recipients.
+
+  Each time you convey a covered work, the recipient automatically
+receives a license from the original licensors, to run, modify and
+propagate that work, subject to this License.  You are not responsible
+for enforcing compliance by third parties with this License.
+
+  An "entity transaction" is a transaction transferring control of an
+organization, or substantially all assets of one, or subdividing an
+organization, or merging organizations.  If propagation of a covered
+work results from an entity transaction, each party to that
+transaction who receives a copy of the work also receives whatever
+licenses to the work the party's predecessor in interest had or could
+give under the previous paragraph, plus a right to possession of the
+Corresponding Source of the work from the predecessor in interest, if
+the predecessor has it or can get it with reasonable efforts.
+
+  You may not impose any further restrictions on the exercise of the
+rights granted or affirmed under this License.  For example, you may
+not impose a license fee, royalty, or other charge for exercise of
+rights granted under this License, and you may not initiate litigation
+(including a cross-claim or counterclaim in a lawsuit) alleging that
+any patent claim is infringed by making, using, selling, offering for
+sale, or importing the Program or any portion of it.
+
+  11. Patents.
+
+  A "contributor" is a copyright holder who authorizes use under this
+License of the Program or a work on which the Program is based.  The
+work thus licensed is called the contributor's "contributor version".
+
+  A contributor's "essential patent claims" are all patent claims
+owned or controlled by the contributor, whether already acquired or
+hereafter acquired, that would be infringed by some manner, permitted
+by this License, of making, using, or selling its contributor version,
+but do not include claims that would be infringed only as a
+consequence of further modification of the contributor version.  For
+purposes of this definition, "control" includes the right to grant
+patent sublicenses in a manner consistent with the requirements of
+this License.
+
+  Each contributor grants you a non-exclusive, worldwide, royalty-free
+patent license under the contributor's essential patent claims, to
+make, use, sell, offer for sale, import and otherwise run, modify and
+propagate the contents of its contributor version.
+
+  In the following three paragraphs, a "patent license" is any express
+agreement or commitment, however denominated, not to enforce a patent
+(such as an express permission to practice a patent or covenant not to
+sue for patent infringement).  To "grant" such a patent license to a
+party means to make such an agreement or commitment not to enforce a
+patent against the party.
+
+  If you convey a covered work, knowingly relying on a patent license,
+and the Corresponding Source of the work is not available for anyone
+to copy, free of charge and under the terms of this License, through a
+publicly available network server or other readily accessible means,
+then you must either (1) cause the Corresponding Source to be so
+available, or (2) arrange to deprive yourself of the benefit of the
+patent license for this particular work, or (3) arrange, in a manner
+consistent with the requirements of this License, to extend the patent
+license to downstream recipients.  "Knowingly relying" means you have
+actual knowledge that, but for the patent license, your conveying the
+covered work in a country, or your recipient's use of the covered work
+in a country, would infringe one or more identifiable patents in that
+country that you have reason to believe are valid.
+
+  If, pursuant to or in connection with a single transaction or
+arrangement, you convey, or propagate by procuring conveyance of, a
+covered work, and grant a patent license to some of the parties
+receiving the covered work authorizing them to use, propagate, modify
+or convey a specific copy of the covered work, then the patent license
+you grant is automatically extended to all recipients of the covered
+work and works based on it.
+
+  A patent license is "discriminatory" if it does not include within
+the scope of its coverage, prohibits the exercise of, or is
+conditioned on the non-exercise of one or more of the rights that are
+specifically granted under this License.  You may not convey a covered
+work if you are a party to an arrangement with a third party that is
+in the business of distributing software, under which you make payment
+to the third party based on the extent of your activity of conveying
+the work, and under which the third party grants, to any of the
+parties who would receive the covered work from you, a discriminatory
+patent license (a) in connection with copies of the covered work
+conveyed by you (or copies made from those copies), or (b) primarily
+for and in connection with specific products or compilations that
+contain the covered work, unless you entered into that arrangement,
+or that patent license was granted, prior to 28 March 2007.
+
+  Nothing in this License shall be construed as excluding or limiting
+any implied license or other defenses to infringement that may
+otherwise be available to you under applicable patent law.
+
+  12. No Surrender of Others' Freedom.
+
+  If conditions are imposed on you (whether by court order, agreement or
+otherwise) that contradict the conditions of this License, they do not
+excuse you from the conditions of this License.  If you cannot convey a
+covered work so as to satisfy simultaneously your obligations under this
+License and any other pertinent obligations, then as a consequence you may
+not convey it at all.  For example, if you agree to terms that obligate you
+to collect a royalty for further conveying from those to whom you convey
+the Program, the only way you could satisfy both those terms and this
+License would be to refrain entirely from conveying the Program.
+
+  13. Remote Network Interaction; Use with the GNU General Public License.
+
+  Notwithstanding any other provision of this License, if you modify the
+Program, your modified version must prominently offer all users
+interacting with it remotely through a computer network (if your version
+supports such interaction) an opportunity to receive the Corresponding
+Source of your version by providing access to the Corresponding Source
+from a network server at no charge, through some standard or customary
+means of facilitating copying of software.  This Corresponding Source
+shall include the Corresponding Source for any work covered by version 3
+of the GNU General Public License that is incorporated pursuant to the
+following paragraph.
+
+  Notwithstanding any other provision of this License, you have
+permission to link or combine any covered work with a work licensed
+under version 3 of the GNU General Public License into a single
+combined work, and to convey the resulting work.  The terms of this
+License will continue to apply to the part which is the covered work,
+but the work with which it is combined will remain governed by version
+3 of the GNU General Public License.
+
+  14. Revised Versions of this License.
+
+  The Free Software Foundation may publish revised and/or new versions of
+the GNU Affero General Public License from time to time.  Such new versions
+will be similar in spirit to the present version, but may differ in detail to
+address new problems or concerns.
+
+  Each version is given a distinguishing version number.  If the
+Program specifies that a certain numbered version of the GNU Affero General
+Public License "or any later version" applies to it, you have the
+option of following the terms and conditions either of that numbered
+version or of any later version published by the Free Software
+Foundation.  If the Program does not specify a version number of the
+GNU Affero General Public License, you may choose any version ever published
+by the Free Software Foundation.
+
+  If the Program specifies that a proxy can decide which future
+versions of the GNU Affero General Public License can be used, that proxy's
+public statement of acceptance of a version permanently authorizes you
+to choose that version for the Program.
+
+  Later license versions may give you additional or different
+permissions.  However, no additional obligations are imposed on any
+author or copyright holder as a result of your choosing to follow a
+later version.
+
+  15. Disclaimer of Warranty.
+
+  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT
+HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
+OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM
+IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF
+ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+
+  16. Limitation of Liability.
+
+  IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS
+THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY
+GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE
+USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF
+DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD
+PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS),
+EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGES.
+
+  17. Interpretation of Sections 15 and 16.
+
+  If the disclaimer of warranty and limitation of liability provided
+above cannot be given local legal effect according to their terms,
+reviewing courts shall apply local law that most closely approximates
+an absolute waiver of all civil liability in connection with the
+Program, unless a warranty or assumption of liability accompanies a
+copy of the Program in return for a fee.
+
+                     END OF TERMS AND CONDITIONS
+
+            How to Apply These Terms to Your New Programs
+
+  If you develop a new program, and you want it to be of the greatest
+possible use to the public, the best way to achieve this is to make it
+free software which everyone can redistribute and change under these terms.
+
+  To do so, attach the following notices to the program.  It is safest
+to attach them to the start of each source file to most effectively
+state the exclusion of warranty; and each file should have at least
+the "copyright" line and a pointer to where the full notice is found.
+
+    <one line to give the program's name and a brief idea of what it does.>
+    Copyright (C) <year>  <name of author>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Also add information on how to contact you by electronic and paper mail.
+
+  If your software can interact with users remotely through a computer
+network, you should also make sure that it provides a way for users to
+get its source.  For example, if your program is a web application, its
+interface could display a "Source" link that leads users to an archive
+of the code.  There are many ways you could offer source, and different
+solutions will be better for different programs; see section 13 for the
+specific requirements.
+
+  You should also get your employer (if you work as a programmer) or school,
+if any, to sign a "copyright disclaimer" for the program, if necessary.
+For more information on this, and how to apply and follow the GNU AGPL, see
+<https://www.gnu.org/licenses/>.
+</script></body></html>

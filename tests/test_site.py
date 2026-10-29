@@ -2,6 +2,8 @@
 import json
 import re
 import unittest
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,6 +65,7 @@ class SiteChecks(unittest.TestCase):
     def test_no_internal_identifiers_in_published_content(self):
         paths = [ROOT / "index.html", ROOT / "speaker-notes.md"]
         paths += list((ROOT / "assets").glob("*")) + list((ROOT / "evidence").glob("*"))
+        paths += [ROOT / "talk/index.html", ROOT / "talk/slides.json", ROOT / "talk/speaker-notes.md"]
         patterns = [r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])",
                     r"(?<![A-Za-z])[A-Za-z]:[\\/]", r"/home/[A-Za-z0-9_-]+", r"/mnt/(?:share|weight)",
                     r"\b[dz]\d{8}\b", r"(?:ghp_|github_pat_)[A-Za-z0-9_]+",
@@ -71,6 +74,26 @@ class SiteChecks(unittest.TestCase):
             text = path.read_text(encoding="utf8")
             for pattern in patterns:
                 self.assertIsNone(re.search(pattern, text), f"{path.name}: {pattern}")
+
+    def test_standalone_lecture(self):
+        subprocess.run([sys.executable, str(ROOT / "export_talk.py"), "--check"], check=True, cwd=ROOT)
+        data = json.loads((ROOT / "talk/slides.json").read_text(encoding="utf8"))
+        self.assertEqual(len(data["slides"]), 15)
+        self.assertEqual(sum(s["minutes"] for s in data["slides"]), 20)
+        self.assertEqual(len({s["id"] for s in data["slides"]}), 15)
+        self.assertEqual(next(s for s in data["slides"] if s["id"] == "chapter-two")["minutes"], 0)
+        html = (ROOT / "talk/index.html").read_text(encoding="utf8")
+        self.assertNotIn("[必填]", html)
+        self.assertNotIn("SLIDES_HERE", html)
+        self.assertIn("GNU AFFERO GENERAL PUBLIC LICENSE", html)
+        self.assertIn("@media print", html)
+        for i, s in enumerate(data["slides"]):
+            self.assertRegex(s["layout"], r"^H(?:0[1-9]|[1-3][0-9]|4[0-2])$")
+            self.assertGreater(len(s["notes"]), 70)
+            self.assertTrue("light" in s["theme"] or "dark" in s["theme"])
+            if i >= 2:
+                themes = [x["theme"].split()[-1] for x in data["slides"][i-2:i+1]]
+                self.assertGreater(len(set(themes)), 1, "Three consecutive pages use the same theme")
 
 
 if __name__ == "__main__":
