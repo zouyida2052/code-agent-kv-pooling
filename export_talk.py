@@ -48,6 +48,10 @@ def body(s):
         return f'<div class="quote-layout"><p class="kicker">{esc(s["title"])}</p><h2 class="lecture-quote" data-anim>{title(s["quote"])}</h2><p class="lead" data-anim>{esc(s["lead"])}</p></div>'
     if kind == "prompt":
         inner = f'<div class="grid-2" style="grid-template-columns:1.15fr 1fr"><div data-anim><pre class="prompt-block">{esc(s["prompt"])}</pre><p class="small-note" style="margin-top:1.5vh">复盘整理的指令模板</p></div><div class="prompt-side" data-anim><div><h3>Agent 应交付</h3><p>{esc(s["expect"])}</p></div><div><h3>人工检查</h3><p>{esc(s["check"])}</p></div></div></div><p class="followup-line" data-anim>{esc(s["followup"])}</p>'
+    elif kind == "brief":
+        terms = ''.join(f'<li data-anim><h3>{esc(t["title"])}</h3><p>{esc(t["detail"])}</p></li>' for t in s['terms'])
+        receipt = ''.join(f'<li><p>{esc(item)}</p></li>' for item in s['receipt'])
+        inner = f'<div class="grid-2 review-columns"><ol class="review-questions">{terms}</ol><aside class="review-examples brief-receipt" data-anim><h3>{esc(s["receipt_title"])}</h3><ul>{receipt}</ul><p class="brief-hint">{esc(s["receipt_hint"])}</p></aside></div><p class="case-takeaway">{esc(s["followup"])}</p>'
     elif kind == "three":
         inner = '<div class="grid-3 same-size">' + ''.join(card(b) for b in s["blocks"]) + '</div>'
     elif kind == "experiment":

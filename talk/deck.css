@@ -2,6 +2,11 @@
 #note-body{white-space:pre-line}
 /* Case pages: short labels, a reading order, and an explicit takeaway. */
 .slide-body.experiment-body,.slide-body.checkpoint-body,.slide-body.review-body{gap:2.3vh}
+.slide-body.brief-body{gap:2.3vh}
+.brief-receipt ul{gap:2.5vh}
+.brief-receipt li p{font-size:min(1.45vw,2.55vh);color:var(--ink)}
+.brief-receipt .brief-hint{margin-top:3vh;padding-top:1.5vh;border-top:1px solid var(--line);font-size:min(1.25vw,2.2vh)}
+@media(orientation:portrait){.brief-receipt li p,.brief-receipt .brief-hint{font-size:3.7vw}}
 .slide-body.checkpoint-body{gap:1.8vh}
 .experiment-fixed,.checkpoint-definition{font-size:min(1.4vw,2.5vh);line-height:1.6}
 .experiment-fixed{padding:1.2vh 1.5vw;background:var(--brand-grey)}
