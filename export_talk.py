@@ -50,11 +50,19 @@ def body(s):
         inner = f'<div class="grid-2" style="grid-template-columns:1.15fr 1fr"><div data-anim><pre class="prompt-block">{esc(s["prompt"])}</pre><p class="small-note" style="margin-top:1.5vh">复盘整理的指令模板</p></div><div class="prompt-side" data-anim><div><h3>Agent 应交付</h3><p>{esc(s["expect"])}</p></div><div><h3>人工检查</h3><p>{esc(s["check"])}</p></div></div></div><p class="followup-line" data-anim>{esc(s["followup"])}</p>'
     elif kind == "three":
         inner = '<div class="grid-3 same-size">' + ''.join(card(b) for b in s["blocks"]) + '</div>'
-    elif kind == "compare":
-        inner = f'<div class="grid-2 same-size compare-layout"><div class="card compare-left" data-anim><h3 class="card-title">{esc(s["left"]["title"])}</h3><p class="body-copy">{esc(s["left"]["text"])}</p><p class="card-detail">{esc(s["left"]["detail"])}</p></div><div class="card compare-right" data-anim><h3 class="card-title">{esc(s["right"]["title"])}</h3><p class="body-copy">{esc(s["right"]["text"])}</p><p class="card-detail">{esc(s["right"]["detail"])}</p></div></div><p class="followup-line">{esc(s["conclusion"])}</p>'
+    elif kind == "experiment":
+        cases = []
+        for case in s['cases']:
+            rows = ''.join(f'<div class="experiment-row"><dt>{esc(row["label"])}</dt><dd>{esc(row["text"])}</dd></div>' for row in case['rows'])
+            cases.append(f'<section class="experiment-case" data-anim><h3>{esc(case["title"])}</h3><dl>{rows}</dl></section>')
+        inner = f'<p class="experiment-fixed" data-anim>{esc(s["fixed"])}</p><div class="grid-2 same-size experiment-cases">{"".join(cases)}</div><p class="case-next">{esc(s["next_action"])}</p><p class="case-takeaway">{esc(s["conclusion"])}</p>'
     elif kind == "checkpoint":
-        stats = ''.join(f'<div class="stat-card" data-anim><div class="stat-big">{esc(b["value"])}</div><h3 class="card-title">{esc(b["label"])}</h3><p class="card-detail">{esc(b["detail"])}</p></div>' for b in s["stats"])
-        inner = f'<div class="grid-3 same-size">{stats}</div><p class="followup-line">{esc(s["conclusion"])}</p><p class="small-note">A3 · DP16/TP1 · V1 eager · 无 MTP · DRAM · 对齐粒度仅针对该配置</p>'
+        steps = ''.join(f'<li class="process-step" data-anim><h3>{esc(step["title"])}</h3><p class="checkpoint-position">{esc(step["position"])}</p><p>{esc(step["detail"])}</p><strong>{esc(step["status"])}</strong></li>' for step in s['steps'])
+        inner = f'<p class="checkpoint-definition">{esc(s["definition"])}</p><ol class="process checkpoint-process" aria-label="实际执行顺序">{steps}</ol><div class="checkpoint-result"><p>{esc(s["before"])}</p><p>{esc(s["after"])}</p></div><p class="case-takeaway">{esc(s["conclusion"])}</p><p class="small-note">{esc(s["scope"])}</p>'
+    elif kind == "review":
+        questions = ''.join(f'<li data-anim><h3>{esc(q["title"])}</h3><p>{esc(q["detail"])}</p></li>' for q in s['questions'])
+        examples = ''.join(f'<li><h4>{esc(e["title"])}</h4><p>{esc(e["detail"])}</p></li>' for e in s['examples'])
+        inner = f'<div class="grid-2 review-columns"><ol class="review-questions">{questions}</ol><aside class="review-examples" data-anim><h3>{esc(s["examples_title"])}</h3><ul>{examples}</ul></aside></div><p class="case-takeaway">{esc(s["followup"])}</p>'
     elif kind == "handoff":
         inner = '<ul class="handoff-list">' + ''.join(f'<li data-anim>{esc(t)}</li>' for t in s["items"]) + f'</ul><p class="followup-line">{esc(s["statement"])}</p>'
     elif kind == "loop":
@@ -63,7 +71,7 @@ def body(s):
         inner = f'<div class="grid-2 same-size" style="grid-template-columns:.8fr 1.2fr"><div class="content-stack" data-anim><p class="body-copy">人的任务是给出范围和判断依据。</p><p class="body-copy">Agent 负责连续探索、验证和整理。</p></div><div class="loop-board" data-anim><div class="loop-boundary">{esc(s["human"])}</div><div class="loop-center"><div class="loop-list">{left}</div><div class="loop-agent">Agent</div><div class="loop-list">{right}</div></div><div class="loop-boundary">{esc(s["gate"])}</div></div></div>'
     else:
         raise ValueError(kind)
-    return f'<div class="slide-body">{heading}{inner}</div>'
+    return f'<div class="slide-body {kind}-body">{heading}{inner}</div>'
 
 
 def build():
