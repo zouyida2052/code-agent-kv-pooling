@@ -51,7 +51,7 @@ def body(s):
     elif kind == "brief":
         terms = ''.join(f'<li data-anim><h3>{esc(t["title"])}</h3><p>{esc(t["detail"])}</p></li>' for t in s['terms'])
         receipt = ''.join(f'<li><p>{esc(item)}</p></li>' for item in s['receipt'])
-        inner = f'<div class="grid-2 review-columns"><ol class="review-questions">{terms}</ol><aside class="review-examples brief-receipt" data-anim><h3>{esc(s["receipt_title"])}</h3><ul>{receipt}</ul><p class="brief-hint">{esc(s["receipt_hint"])}</p></aside></div><p class="case-takeaway">{esc(s["followup"])}</p>'
+        inner = f'<div class="grid-2 review-columns"><ol class="review-questions">{terms}</ol><aside class="review-examples brief-receipt" data-anim><h3>{esc(s["receipt_title"])}</h3><ul>{receipt}</ul><p class="brief-hint">{esc(s["receipt_hint"])}</p></aside></div>'
     elif kind == "three":
         inner = '<div class="grid-3 same-size">' + ''.join(card(b) for b in s["blocks"]) + '</div>'
     elif kind == "experiment":
