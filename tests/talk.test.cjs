@@ -16,10 +16,10 @@ test('standalone lecture works on file URL without external resources', async ()
   const w=dom.window, d=w.document;
   await tick();
   const slides = [...d.querySelectorAll('#deck > .slide')];
-  assert.equal(slides.length, 15);
+  assert.equal(slides.length, 14);
   assert.equal(d.querySelectorAll('script[src], link[rel=stylesheet], img[src]').length, 0);
-  assert.equal(d.querySelectorAll('#nav button').length, 15);
-  assert.equal(d.querySelectorAll('.page-no').length, 15);
+  assert.equal(d.querySelectorAll('#nav button').length, 14);
+  assert.equal(d.querySelectorAll('.page-no').length, 14);
   assert.equal(slides[0].classList.contains('active'), true);
   d.getElementById('next').click();
   assert.equal(slides[1].classList.contains('active'), true);
@@ -39,7 +39,7 @@ test('standalone lecture works on file URL without external resources', async ()
   assert.equal(d.body.classList.contains('low-power'), true);
   w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape'}));
   assert.equal(d.body.classList.contains('overview'), true);
-  assert.equal(d.querySelectorAll('.thumb').length, 15);
+  assert.equal(d.querySelectorAll('.thumb').length, 14);
   d.querySelectorAll('.thumb')[9].click();
   assert.equal(d.body.classList.contains('overview'), false);
   assert.equal(slides[9].classList.contains('active'), true);
@@ -51,9 +51,9 @@ test('standalone lecture works on file URL without external resources', async ()
   assert.equal(d.getElementById('next').disabled, true);
   w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Home'}));
   assert.equal(d.getElementById('previous').disabled, true);
-  w.location.hash='chapter-two';await tick();
-  assert.equal(slides[13].classList.contains('active'), true);
-  assert.match(slides[13].textContent, /预留章节/);
+  w.location.hash='task-brief';await tick();
+  assert.equal(slides[4].classList.contains('active'), true);
+  assert.match(slides[4].textContent, /一份可执行的适配任务/);
   assert.deepEqual(errors, []);
   w.close();
 });

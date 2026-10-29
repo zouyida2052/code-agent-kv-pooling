@@ -20,7 +20,7 @@
   }
   function notes() {
     const s = data.slides[current];
-    document.getElementById('note-title').textContent = `${current + 1}. ${s.title.replaceAll('\n', ' ')} · ${s.minutes} 分钟`;
+    document.getElementById('note-title').textContent = `${current + 1}. ${s.title.replaceAll('\n', ' ')} · ${s.duration} · ${s.time_range}`;
     document.getElementById('note-body').textContent = s.notes;
     const links = document.getElementById('note-sources');
     links.replaceChildren();

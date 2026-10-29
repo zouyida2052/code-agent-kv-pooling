@@ -18,6 +18,16 @@ def title(text):
     return esc(text).replace("\n", "<br>")
 
 
+def clock(seconds):
+    return f'{seconds // 60:02d}:{seconds % 60:02d}'
+
+
+def duration(minutes):
+    seconds = round(minutes * 60)
+    whole, rest = divmod(seconds, 60)
+    return ' '.join(part for part in [f'{whole} 分钟' if whole else '', f'{rest} 秒' if rest else ''] if part)
+
+
 def card(block):
     return f'<div class="card flat" data-anim><h3 class="card-title">{esc(block["title"])}</h3><p class="card-body">{esc(block["text"])}</p><p class="card-detail">{esc(block["detail"])}</p></div>'
 
@@ -26,7 +36,7 @@ def body(s):
     kind = s["type"]
     heading = f'<div class="content-stack" data-anim><h2 class="h-xl">{title(s["title"])}</h2><p class="lead">{esc(s.get("lead", ""))}</p></div>'
     if kind == "cover":
-        return f'<div class="cover-shell"><div class="cover-title-wrap"><div class="cover-badge"><span class="brand-mark" aria-hidden="true"></span></div><h1 class="h-hero" data-anim>{title(s["title"])}</h1><p class="lead cover-subtitle" data-anim>{esc(s["lead"])}</p><p class="cover-line">{esc(s["detail"])}</p></div><div class="cover-visual" aria-hidden="true"><span class="cover-code">AI</span></div></div><div class="cover-wave" aria-hidden="true"></div><div class="cover-meta"><span>技术交流</span><span>第一章参考时长 20 分钟</span></div>'
+        return f'<div class="cover-shell"><div class="cover-title-wrap"><div class="cover-badge"><span class="brand-mark" aria-hidden="true"></span></div><h1 class="h-hero" data-anim>{title(s["title"])}</h1><p class="lead cover-subtitle" data-anim>{esc(s["lead"])}</p><p class="cover-line">{esc(s["detail"])}</p></div><div class="cover-visual" aria-hidden="true"><span class="cover-code">AI</span></div></div><div class="cover-wave" aria-hidden="true"></div><div class="cover-meta"><span>技术交流</span><span>模型适配 · 30 分钟</span></div>'
     if kind == "agenda":
         items = ''.join(f'<div class="agenda-item" data-anim><div class="idx">{esc(i["number"])}</div><div class="txt">{esc(i["title"])}<small>{esc(i["text"])}</small><span class="agenda-status">{esc(i["status"])}</span></div></div>' for i in s["items"])
         return f'<div class="agenda-layout"><div class="red-panel" data-anim><h2 class="h-xl">专题安排</h2><div class="en">CONTENTS</div></div><div class="agenda-list">{items}<p class="small-note">{esc(s["lead"])}</p></div></div>'
@@ -62,8 +72,13 @@ def build():
     sources = {key: dict(value, url=value["url"] if value["url"].startswith("https://") else SITE + value["url"]) for key, value in sources.items()}
     data["sources"] = sources
     sections = []
+    elapsed = 0
     for s in data["slides"]:
-        chrome = '' if s["layout"] in {"H01", "H02", "H03", "H10"} else f'<div class="chrome"><div class="l"><span class="square"></span><span>{esc(s.get("step", "第一章 模型适配"))}</span></div><div></div></div>'
+        end = elapsed + round(s['minutes'] * 60)
+        s['time_range'] = f'{clock(elapsed)}–{clock(end)}'
+        s['duration'] = duration(s['minutes'])
+        elapsed = end
+        chrome = '' if s["layout"] in {"H01", "H02", "H03", "H10"} else f'<div class="chrome"><div class="l"><span class="square"></span><span>{esc(s.get("step", "模型适配"))}</span></div><div></div></div>'
         classes = 'slide ' + ('hw-cover ' if s["type"] == "cover" else '') + s["theme"]
         sections.append(f'<section class="{classes}" data-layout="{s["layout"]}" data-animate="{s["type"]}" id="slide-{s["id"]}" aria-label="{esc(s["title"].replace(chr(10), " "))}">{chrome}{BRAND}{body(s)}</section>')
     css = (TALK / "base.css").read_text(encoding="utf8") + '\n' + (TALK / "deck.css").read_text(encoding="utf8")
@@ -71,13 +86,21 @@ def build():
     payload = json.dumps(data, ensure_ascii=False).replace('<', '\\u003c')
     license_text = (TALK / "LICENSE").read_text(encoding="utf8")
     document = f'''<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Code Agent 辅助池化开发，华为企业汇报风讲解文件。第一章模型适配，第二章性能调优预留。"><title>{esc(data['title'])}</title><style>{css}</style></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Code Agent 辅助池化开发，华为企业汇报风讲解文件。30 分钟模型适配专题。"><title>{esc(data['title'])}</title><style>{css}</style></head>
 <body><a class="skip-link" href="#deck">跳到讲解内容</a><div id="hint">← → 翻页 · ESC 索引 · N 备注 · B 静态</div><main id="deck" tabindex="-1">{''.join(sections)}</main><nav id="nav" aria-label="逐页跳转"></nav><div id="controls"><button id="previous" type="button" aria-label="上一页">‹</button><button id="next" type="button" aria-label="下一页">›</button><button id="index-toggle" type="button">索引</button><button id="notes-toggle" type="button" aria-expanded="false">备注</button><button id="static-toggle" type="button" aria-pressed="false">静态</button><button id="screen-toggle" type="button">全屏</button></div><div id="overview" role="dialog" aria-label="幻灯片索引" aria-modal="true" aria-hidden="true" inert></div><aside id="speaker-panel" aria-label="讲者备注" hidden><button id="speaker-close" type="button">关闭</button><h2 id="note-title"></h2><p id="note-body"></p><div id="note-sources"></div></aside><noscript><div class="fallback">请启用 JavaScript 以横向翻页。全部页面文字已包含在本文件中。</div></noscript><script id="speaker-data" type="application/json">{payload}</script><script>{js}</script><script id="license" type="text/plain">{license_text}</script></body></html>'''
-    lines = ['# ' + data['title'], '', data['subtitle'], '', '第一章参考时长 20 分钟，第二章性能调优预留。', '指令模板为复盘整理，并非历史对话逐字记录。', '']
+    lines = ['# ' + data['title'] + '：30 分钟完整讲稿', '', data['subtitle'], '',
+             '本次只讲模型适配，共 14 页，计划用时 30 分钟，不含会后问答。',
+             '每页正文可直接朗读。用时包含指向页面、停顿和翻页，实际语速请以彩排为准。',
+             '指令模板为复盘整理，并非历史对话逐字记录。各页的备查模板和来源无需逐字朗读。', '',
+             '## 时间安排', '', '| 页码 | 页面 | 本页用时 | 累计时间段 |', '| --- | --- | --- | --- |']
     for i, s in enumerate(data['slides'], 1):
-        lines += [f"## {i:02d}. {s['title'].replace(chr(10), ' ')}（{s['minutes']} 分钟）", '', s['notes'], '']
+        lines.append(f"| {i:02d} | {s['title'].replace(chr(10), ' ')} | {s['duration']} | {s['time_range']} |")
+    lines += ['', '## 逐页讲稿', '']
+    for i, s in enumerate(data['slides'], 1):
+        lines += [f"### 第 {i:02d} 页：{s['title'].replace(chr(10), ' ')}", '',
+                  f"**本页用时：{s['duration']}。累计时间：{s['time_range']}。**", '', s['notes'], '']
         if 'prompt' in s:
-            lines += ['### 指令模板', '', '```text', s['prompt'], '```', '']
+            lines += ['#### 备查指令模板（无需逐字朗读）', '', '```text', s['prompt'], '```', '']
         for key in s['sources']:
             v = sources[key]
             lines.append(f"- 来源：[{v['label']}]({v['url']})")
