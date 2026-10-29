@@ -10,7 +10,7 @@
       "type": "cover",
       "minutes": 0.5,
       "title": "Code Agent\n辅助池化开发",
-      "lead": "新模型适配的方法与人工检查点",
+      "lead": "让 Agent 持续推进，用证据判断每一步。",
       "detail": "模型适配 · GLM-5.3-Flash 案例",
       "notes": "大家好，今天分享怎样使用 Code Agent 完成新模型的池化适配。\n\n我们用 GLM-5.3-Flash 作案例，用三十分钟讲清怎么交任务、检查理解、追问故障原因，以及审查代码和验收结果。\n\n希望大家能够把这些操作方法用到自己的模型上。",
       "sources": [
