@@ -84,6 +84,33 @@ def body(s):
     return f'<div class="slide-body {kind}-body">{heading}{inner}</div>'
 
 
+def reader_document(data):
+    contents = []
+    pages = []
+    for i,s in enumerate(data['slides'],1):
+        label = f'第 {i:02d} 页：{s["title"].replace(chr(10), " ")}'
+        timing = f'本页 {s["duration"]} · 累计 {s["time_range"]}'
+        contents.append(f'<li><a href="#{esc(s["id"])}">{esc(label)}</a><span>{esc(timing)}</span></li>')
+        paragraphs = []
+        for block in s['notes'].split('\n\n'):
+            if block.startswith('【') and block.endswith('】'):
+                paragraphs.append(f'<h3>{esc(block[1:-1])}</h3>')
+            else:
+                paragraphs.append(f'<p>{title(block)}</p>')
+        template = ''
+        if s.get('prompt'):
+            template = f'<section class="template"><h3>备查指令模板（无需逐字朗读）</h3><pre>{esc(s["prompt"])}</pre></section>'
+        sources = ''
+        if s['sources']:
+            links = ''.join(f'<li><a href="{esc(data["sources"][key]["url"])}">{esc(data["sources"][key]["label"])}</a></li>' for key in s['sources'])
+            sources = f'<details class="sources"><summary>本页来源</summary><ul>{links}</ul></details>'
+        pages.append(f'<section class="script-page" id="{esc(s["id"])}"><h2>{esc(label)}</h2><p class="time"><strong>本页用时：{esc(s["duration"])}</strong><br>累计时间：{esc(s["time_range"])}</p>{"".join(paragraphs)}{template}{sources}<a class="slide-link" href="{SITE}talk/#{esc(s["id"])}">查看对应演示页</a></section>')
+    css = (TALK / 'reader.css').read_text(encoding='utf8')
+    return f'''<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Code Agent 辅助池化开发，30 分钟完整讲稿，适合手机连续阅读。"><title>30 分钟完整讲稿 · {esc(data['title'])}</title><style>{css}</style></head>
+<body id="top"><nav class="reader-nav" aria-label="讲稿导航"><a href="#contents">目录与时间</a><a href="{SITE}talk/">演示文件</a></nav><main><header><h1>{esc(data['title'])}<br>30 分钟完整讲稿</h1><div class="intro"><p>{esc(data['subtitle'])}</p><p>本次只讲模型适配，共 14 页，30 分钟，不含问答。实际用时请以彩排为准。</p><p>页内小标题用于对应演示内容，无需朗读。备查模板根据本次经历整理，并非历史对话逐字记录。</p></div></header><details class="contents" id="contents"><summary>展开目录与每页时间</summary><ol>{''.join(contents)}</ol></details>{''.join(pages)}<footer class="reader-footer">本文件内含全部正文与样式，无需 JavaScript，可保存后离线阅读。<br><a href="https://github.com/zouyida2052/code-agent-kv-pooling">网站与对应源码</a></footer></main></body></html>'''
+
+
 def build():
     data = json.loads((TALK / "slides.json").read_text(encoding="utf8"))
     sources = json.loads((ROOT / "assets/content.json").read_text(encoding="utf8"))["sources"]
@@ -124,7 +151,8 @@ def build():
             v = sources[key]
             lines.append(f"- 来源：[{v['label']}]({v['url']})")
         lines.append('')
-    return {'index.html': document, 'speaker-notes.md': '\n'.join(lines)}
+    return {'index.html': document, 'speaker-notes.md': '\n'.join(lines),
+            'speaker-notes.html': reader_document(data)}
 
 
 if __name__ == '__main__':

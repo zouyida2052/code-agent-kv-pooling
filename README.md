@@ -6,7 +6,7 @@
 - **第二章：性能调优**，预留章节，内容和时长后续补充。当前演示只覆盖第一章。
 
 - 网站：https://zouyida2052.github.io/code-agent-kv-pooling/
-- 新版讲解文件：[华为企业汇报风 · 单文件 HTML](talk/index.html)，附 [30 分钟完整讲稿与逐页时间表](talk/speaker-notes.md)。离线可用，共 14 页，本次只讲模型适配。
+- 新版讲解文件：[华为企业汇报风 · 单文件 HTML](talk/index.html)，附 [30 分钟完整讲稿与逐页时间表（手机版）](talk/speaker-notes.html)。离线可用，共 14 页，本次只讲模型适配。
 - 演示：进入网站点击“开始演示”；左右方向键或 PageUp / PageDown 翻页，N 开关备注，F 全屏，Esc 在退出全屏后返回阅读。
 - 阅读：默认显示全部章节，附任务模板、验收清单与证据索引。浏览器打印可导出阅读版 PDF。
 - 讲稿：[speaker-notes.md](speaker-notes.md)

@@ -65,7 +65,8 @@ class SiteChecks(unittest.TestCase):
     def test_no_internal_identifiers_in_published_content(self):
         paths = [ROOT / "index.html", ROOT / "speaker-notes.md"]
         paths += list((ROOT / "assets").glob("*")) + list((ROOT / "evidence").glob("*"))
-        paths += [ROOT / "talk/index.html", ROOT / "talk/slides.json", ROOT / "talk/speaker-notes.md"]
+        paths += [ROOT / "talk/index.html", ROOT / "talk/slides.json", ROOT / "talk/speaker-notes.md",
+                  ROOT / "talk/speaker-notes.html"]
         patterns = [r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])",
                     r"(?<![A-Za-z])[A-Za-z]:[\\/]", r"/home/[A-Za-z0-9_-]+", r"/mnt/(?:share|weight)",
                     r"\b[dz]\d{8}\b", r"(?:ghp_|github_pat_)[A-Za-z0-9_]+",
